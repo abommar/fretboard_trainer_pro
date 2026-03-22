@@ -50,6 +50,45 @@ enum ChordType: String, CaseIterable, Identifiable {
         case .sus4:      return "sus4"
         }
     }
+
+    /// Short scale-degree labels for each chord tone, e.g. ["1","3","5"]
+    var degreeSymbols: [String] {
+        switch self {
+        case .major:       return ["1", "3", "5"]
+        case .minor:       return ["1", "b3", "5"]
+        case .dominant7:   return ["1", "3", "5", "b7"]
+        case .major7:      return ["1", "3", "5", "7"]
+        case .minor7:      return ["1", "b3", "5", "b7"]
+        case .sus2:        return ["1", "2", "5"]
+        case .sus4:        return ["1", "4", "5"]
+        }
+    }
+
+    /// Full interval name for each chord tone
+    var degreeNames: [String] {
+        switch self {
+        case .major:       return ["Root", "Major 3rd", "Perfect 5th"]
+        case .minor:       return ["Root", "Minor 3rd", "Perfect 5th"]
+        case .dominant7:   return ["Root", "Major 3rd", "Perfect 5th", "Minor 7th"]
+        case .major7:      return ["Root", "Major 3rd", "Perfect 5th", "Major 7th"]
+        case .minor7:      return ["Root", "Minor 3rd", "Perfect 5th", "Minor 7th"]
+        case .sus2:        return ["Root", "Major 2nd", "Perfect 5th"]
+        case .sus4:        return ["Root", "Perfect 4th", "Perfect 5th"]
+        }
+    }
+
+    /// One-line character description useful for beginners
+    var mood: String {
+        switch self {
+        case .major:       return "Bright & stable — the foundation of harmony"
+        case .minor:       return "Dark & emotive — melancholic character"
+        case .dominant7:   return "Bluesy & tense — wants to resolve to the tonic"
+        case .major7:      return "Dreamy & lush — jazzy, sophisticated sound"
+        case .minor7:      return "Mellow & soulful — common in jazz, R&B, and soul"
+        case .sus2:        return "Open & airy — neither major nor minor, floats freely"
+        case .sus4:        return "Suspended & anticipating — naturally resolves to major"
+        }
+    }
 }
 
 enum ChordLibrary {

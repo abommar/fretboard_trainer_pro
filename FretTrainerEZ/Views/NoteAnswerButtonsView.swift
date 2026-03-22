@@ -33,6 +33,8 @@ private struct NoteButton: View {
     var onStudyTap: ((Note) -> Void)? = nil
     var studySelectedNote: Note? = nil
 
+    @AppStorage("useFlats") private var useFlats: Bool = false
+
     private var isStudyMode: Bool { onStudyTap != nil }
     private var isStudySelected: Bool { studySelectedNote == note }
 
@@ -88,7 +90,7 @@ private struct NoteButton: View {
                 gameState.submit(answer: note)
             }
         } label: {
-            Text(note.sharpName)
+            Text(useFlats ? note.flatName : note.sharpName)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundColor(labelColor)
                 .frame(maxWidth: .infinity)

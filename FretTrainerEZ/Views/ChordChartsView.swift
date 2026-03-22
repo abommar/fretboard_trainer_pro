@@ -6,12 +6,19 @@ struct ChordChartsView: View {
     @State private var selectedRoot: Note = .C
     @State private var selectedType: ChordType = .major
 
+    @AppStorage("useFlats") private var useFlats: Bool = false
+
     private let accent  = Color(hex: "#E94560")
     private let bg      = Color(hex: "#1A1A2E")
     private let cardBg  = Color(hex: "#16213E")
 
     private var voicings: [ChordVoicing] {
         ChordLibrary.voicings(root: selectedRoot, type: selectedType)
+    }
+
+    /// Chord tones for the current root + type (same across all voicings)
+    private var chordTones: [Note] {
+        voicings.first?.chordTones ?? []
     }
 
     var body: some View {
@@ -21,7 +28,19 @@ struct ChordChartsView: View {
                 navBar
                 filtersRow
                 Divider().background(Color.white.opacity(0.08))
-                chordContent
+                GeometryReader { geo in
+                    HStack(alignment: .top, spacing: 0) {
+                        // Left: scrollable chord diagrams — fixed to diagram width
+                        diagramList
+                            .frame(width: min(geo.size.width * 0.44, 175))
+
+                        Divider().background(Color.white.opacity(0.1))
+
+                        // Right: theory breakdown — gets the rest
+                        theoryPanel
+                            .frame(maxWidth: .infinity)
+                    }
+                }
             }
         }
         .preferredColorScheme(.dark)
@@ -56,7 +75,6 @@ struct ChordChartsView: View {
 
     private var filtersRow: some View {
         VStack(spacing: 8) {
-            // Root note picker (scrollable)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(Note.allCases, id: \.self) { note in
@@ -65,8 +83,6 @@ struct ChordChartsView: View {
                 }
                 .padding(.horizontal, 16)
             }
-
-            // Chord type picker
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(ChordType.allCases) { type in
@@ -83,15 +99,12 @@ struct ChordChartsView: View {
     private func noteChip(_ note: Note) -> some View {
         let selected = note == selectedRoot
         return Button(action: { selectedRoot = note }) {
-            Text(note.sharpName)
+            Text(useFlats ? note.flatName : note.sharpName)
                 .font(.system(size: 13, weight: selected ? .bold : .medium, design: .rounded))
                 .foregroundColor(selected ? .white : .white.opacity(0.55))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(selected ? accent : Color.white.opacity(0.07))
-                )
+                .background(RoundedRectangle(cornerRadius: 8).fill(selected ? accent : Color.white.opacity(0.07)))
         }
         .buttonStyle(.plain)
     }
@@ -107,52 +120,128 @@ struct ChordChartsView: View {
                 .background(
                     RoundedRectangle(cornerRadius: 7)
                         .fill(selected ? Color(hex: "#2A2A6A") : Color.white.opacity(0.07))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 7)
-                                .stroke(selected ? accent.opacity(0.6) : Color.clear, lineWidth: 1)
-                        )
+                        .overlay(RoundedRectangle(cornerRadius: 7)
+                            .stroke(selected ? accent.opacity(0.6) : Color.clear, lineWidth: 1))
                 )
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Chord content
+    // MARK: - Left: diagram list
 
-    @ViewBuilder
-    private var chordContent: some View {
-        if voicings.isEmpty {
-            VStack(spacing: 12) {
-                Spacer()
-                Image(systemName: "music.note.list")
-                    .font(.system(size: 40))
-                    .foregroundColor(.white.opacity(0.15))
-                Text("No voicings in library yet")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.35))
-                Spacer()
-            }
-        } else {
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                    ForEach(voicings) { voicing in
-                        ChordDiagramView(voicing: voicing)
-                    }
+    private var diagramList: some View {
+        Group {
+            if voicings.isEmpty {
+                VStack(spacing: 10) {
+                    Spacer()
+                    Image(systemName: "music.note.list")
+                        .font(.system(size: 32))
+                        .foregroundColor(.white.opacity(0.15))
+                    Text("No voicings yet")
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.35))
+                    Spacer()
                 }
-                .padding(16)
+            } else {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        ForEach(voicings) { voicing in
+                            ChordDiagramView(voicing: voicing)
+                        }
+                    }
+                    .padding(14)
+                }
             }
         }
     }
+
+    // MARK: - Right: theory breakdown
+
+    private var theoryPanel: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+
+                // Chord name + character as subtitle
+                let rootName = useFlats ? selectedRoot.flatName : selectedRoot.sharpName
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(rootName)\(selectedType.suffix)")
+                        .font(.system(size: 20, weight: .heavy, design: .rounded))
+                        .foregroundColor(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(selectedType.mood)
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.45))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider().background(Color.white.opacity(0.1))
+
+                // Notes + Intervals side by side
+                HStack(alignment: .top, spacing: 16) {
+                    // Left: note pills
+                    if !chordTones.isEmpty {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("NOTES")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.white.opacity(0.35))
+                            HStack(spacing: 6) {
+                                ForEach(Array(zip(chordTones, selectedType.degreeSymbols).enumerated()), id: \.offset) { _, pair in
+                                    let (note, degree) = pair
+                                    let hue    = Double(note.rawValue) / 12.0
+                                    let pillBg = Color(hue: hue, saturation: 0.80, brightness: 0.95)
+                                    let fg: Color = (hue > 0.14 && hue < 0.56) ? .black.opacity(0.85) : .white
+                                    VStack(spacing: 2) {
+                                        Text(useFlats ? note.flatName : note.sharpName)
+                                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                            .foregroundColor(fg)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Capsule().fill(pillBg))
+                                        Text(degree)
+                                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                            .foregroundColor(.white.opacity(0.5))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Right: interval names
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("INTERVALS")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white.opacity(0.35))
+                        ForEach(Array(zip(selectedType.degreeSymbols, selectedType.degreeNames).enumerated()), id: \.offset) { _, pair in
+                            let (symbol, name) = pair
+                            HStack(spacing: 6) {
+                                Text(symbol)
+                                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                                    .foregroundColor(accent)
+                                    .frame(width: 20, alignment: .leading)
+                                Text(name)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(12)
+        }
+        .animation(.easeInOut(duration: 0.15), value: selectedType)
+        .animation(.easeInOut(duration: 0.15), value: selectedRoot)
+    }
 }
 
-// MARK: - Chord diagram
+// MARK: - Chord diagram card
 
 struct ChordDiagramView: View {
     let voicing: ChordVoicing
 
-    private let stringCount  = 6
-    private let fretRows     = 5
-    private let cellW: CGFloat = 28
-    private let cellH: CGFloat = 22
+    private let stringCount = 6
+    private let fretRows    = 5
+    private let cellW: CGFloat = 26
+    private let cellH: CGFloat = 20
     private let nutH: CGFloat  = 5
 
     private let cardBg = Color(hex: "#16213E")
@@ -161,13 +250,11 @@ struct ChordDiagramView: View {
     var body: some View {
         VStack(spacing: 6) {
             Text(voicing.name)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
 
-            chordTonesRow
-
             diagramBody
-                .frame(height: CGFloat(fretRows) * cellH + nutH + 28)
+                .frame(height: CGFloat(fretRows) * cellH + nutH + 24)
 
             if voicing.baseFret > 1 {
                 Text("fr \(voicing.baseFret)")
@@ -175,24 +262,8 @@ struct ChordDiagramView: View {
                     .foregroundColor(.white.opacity(0.45))
             }
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(cardBg))
-    }
-
-    private var chordTonesRow: some View {
-        HStack(spacing: 4) {
-            ForEach(voicing.chordTones, id: \.rawValue) { note in
-                let hue = Double(note.rawValue) / 12.0
-                let bg = Color(hue: hue, saturation: 0.80, brightness: 0.95)
-                let fg: Color = (hue > 0.14 && hue < 0.56) ? Color.black.opacity(0.85) : .white
-                Text(note.sharpName)
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
-                    .foregroundColor(fg)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(bg))
-            }
-        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(cardBg))
     }
 
     private var diagramBody: some View {
@@ -200,13 +271,11 @@ struct ChordDiagramView: View {
         let totalH = CGFloat(fretRows) * cellH
 
         return ZStack(alignment: .topLeading) {
-            // Fretboard background
             Rectangle()
                 .fill(woodBg)
                 .frame(width: totalW, height: totalH)
                 .offset(y: nutH)
 
-            // Nut or fret indicator
             if voicing.baseFret == 1 {
                 Rectangle()
                     .fill(Color(hex: "#E8D5A3"))
@@ -218,7 +287,6 @@ struct ChordDiagramView: View {
                     .offset(y: nutH / 2)
             }
 
-            // Fret wires
             ForEach(1...fretRows, id: \.self) { fret in
                 Rectangle()
                     .fill(Color(hex: "#888888").opacity(0.7))
@@ -226,7 +294,6 @@ struct ChordDiagramView: View {
                     .offset(y: nutH + CGFloat(fret) * cellH)
             }
 
-            // String lines
             ForEach(0..<stringCount, id: \.self) { s in
                 Rectangle()
                     .fill(Color(hex: "#C0C0C0").opacity(0.8))
@@ -234,41 +301,36 @@ struct ChordDiagramView: View {
                     .offset(x: CGFloat(s) * cellW - 0.75, y: nutH)
             }
 
-            // Muted / open indicators above nut
             ForEach(0..<stringCount, id: \.self) { s in
                 let fret = voicing.frets[s]
                 Group {
                     if fret == nil {
-                        // X for muted
                         Text("×")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white.opacity(0.55))
                     } else if fret == 0 {
-                        // Circle for open
                         Circle()
                             .stroke(Color.white.opacity(0.7), lineWidth: 1.5)
-                            .frame(width: 9, height: 9)
+                            .frame(width: 8, height: 8)
                     }
                 }
-                .offset(x: CGFloat(s) * cellW - 6,
-                        y: -16)
+                .offset(x: CGFloat(s) * cellW - 5, y: -14)
             }
 
-            // Finger dots
             ForEach(0..<stringCount, id: \.self) { s in
                 if let fret = voicing.frets[s], fret > 0 {
-                    let adjustedFret = fret - voicing.baseFret + 1
-                    if adjustedFret >= 1 && adjustedFret <= fretRows {
+                    let adj = fret - voicing.baseFret + 1
+                    if adj >= 1 && adj <= fretRows {
                         Circle()
                             .fill(Color(hex: "#E94560"))
-                            .frame(width: 16, height: 16)
-                            .offset(x: CGFloat(s) * cellW - 8,
-                                    y: nutH + CGFloat(adjustedFret - 1) * cellH + (cellH - 16) / 2)
+                            .frame(width: 14, height: 14)
+                            .offset(x: CGFloat(s) * cellW - 7,
+                                    y: nutH + CGFloat(adj - 1) * cellH + (cellH - 14) / 2)
                     }
                 }
             }
         }
-        .frame(width: totalW, height: totalH + nutH + 20)
-        .padding(.top, 20) // space for open/muted symbols
+        .frame(width: totalW, height: totalH + nutH + 18)
+        .padding(.top, 18)
     }
 }

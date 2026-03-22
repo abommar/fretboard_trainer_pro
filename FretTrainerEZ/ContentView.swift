@@ -6,6 +6,16 @@ struct ContentView: View {
     @State private var activeScreen: AppScreen? = nil
     @State private var isStudyMode = false
     @State private var studyHighlightNote: Note? = nil
+    @State private var audioEngine = NoteAudioEngine()
+    @AppStorage("fretboardStyle") private var fretboardStyleRaw: String = FretboardStyle.rosewood.rawValue
+    @AppStorage("useFlats") private var useFlats: Bool = false
+    @AppStorage("soundEnabled") private var soundEnabled: Bool = false
+
+    private let fretboard = Fretboard()
+
+    private var fretboardStyle: FretboardStyle {
+        FretboardStyle(rawValue: fretboardStyleRaw) ?? .rosewood
+    }
 
     private let accent = Color(hex: "#E94560")
     private let bg     = Color(hex: "#1A1A2E")
@@ -67,7 +77,7 @@ struct ContentView: View {
                     .padding(.bottom, compact ? 4 : 6)
 
                 FretboardView(
-                    fretboard: Fretboard(),
+                    fretboard: fretboard,
                     highlightString: isStudyMode ? nil : activeHighlightString,
                     highlightFret: isStudyMode ? nil : activeHighlightFret,
                     highlightColor: highlightColor,
@@ -76,8 +86,18 @@ struct ContentView: View {
                         : [],
                     showNoteLabels: isStudyMode,
                     studyFilterNote: studyHighlightNote,
-                    onFretTap: !isStudyMode && gameState.gameMode == .findTheFret
-                        ? { s, f in gameState.submitFret(string: s, fret: f) }
+                    style: fretboardStyle,
+                    onFretTap: (isStudyMode || gameState.gameMode == .findTheFret)
+                        ? { s, f in
+                            if isStudyMode {
+                                if soundEnabled { audioEngine.play(string: s, fret: f) }
+                            } else {
+                                if soundEnabled && fretboard.note(string: s, fret: f) == gameState.correctNote {
+                                    audioEngine.play(string: s, fret: f)
+                                }
+                                gameState.submitFret(string: s, fret: f)
+                            }
+                        }
                         : nil
                 )
                 .frame(height: fbH)
@@ -120,6 +140,18 @@ struct ContentView: View {
             case .chordCharts:     ChordChartsView()
             case .chromaticTuner:  ChromaticTunerView()
             case .scales:          ScalesView()
+            case .fretboardStyle:
+                FretboardStyleView(selectedStyle: Binding(
+                    get: { fretboardStyle },
+                    set: { fretboardStyleRaw = $0.rawValue }
+                ))
+            case .settings:
+                SettingsView()
+            }
+        }
+        .onChange(of: gameState.questionID) {
+            if soundEnabled && !isStudyMode && gameState.gameMode == .nameTheNote {
+                audioEngine.play(string: gameState.currentString, fret: gameState.currentFret)
             }
         }
         .preferredColorScheme(.dark)
@@ -230,7 +262,7 @@ struct ContentView: View {
             HStack {
                 Spacer()
                 VStack(spacing: 4) {
-                    Text(gameState.correctNote.sharpName)
+                    Text(useFlats ? gameState.correctNote.flatName : gameState.correctNote.sharpName)
                         .font(.system(size: btnH * 1.4, weight: .heavy, design: .rounded))
                         .foregroundColor(findTheFretNoteColor)
                         .animation(.easeInOut(duration: 0.15), value: gameState.fretAnswerState)
@@ -421,7 +453,7 @@ struct ContentView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
         } else {
-            Text("Tap every \(gameState.correctNote.sharpName) on the fretboard")
+            Text("Tap every \(useFlats ? gameState.correctNote.flatName : gameState.correctNote.sharpName) on the fretboard")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
         }

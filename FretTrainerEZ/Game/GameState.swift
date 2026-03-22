@@ -39,6 +39,7 @@ final class GameState {
     var currentString: Int = 0
     var currentFret: Int = 0
     var correctNote: Note = .C
+    var questionID: UUID = UUID()
 
     // Score
     var correctCount: Int = 0
@@ -97,6 +98,7 @@ final class GameState {
         answerState = .idle
         fretAnswerState = .idle
         foundFrets = []
+        questionID = UUID()
         if gameMode == .nameTheNote {
             currentString = Int.random(in: 0..<fretboard.tuning.stringCount)
             currentFret   = Int.random(in: 0...difficulty.maxFret)
@@ -248,6 +250,7 @@ final class GameState {
     }
 
     private func playHaptic(success: Bool) {
+        guard UserDefaults.standard.object(forKey: "hapticsEnabled") as? Bool ?? true else { return }
         guard let engine = hapticEngine,
               CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
         let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: success ? 0.8 : 1.0)

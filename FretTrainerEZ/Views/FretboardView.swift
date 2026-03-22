@@ -13,6 +13,8 @@ struct FretboardView: View {
     var studyFilterNote: Note? = nil
     /// Scale mode: dots at each scale position. Tuple of (position, dotColor).
     var scaleHighlights: [(FretPosition, Color)] = []
+    /// Visual theme for the fretboard.
+    var style: FretboardStyle = .rosewood
     /// When non-nil, each fret/string intersection is tappable. Called with (stringIndex, fret).
     var onFretTap: ((Int, Int) -> Void)? = nil
 
@@ -61,7 +63,7 @@ struct FretboardView: View {
         Rectangle()
             .fill(
                 LinearGradient(
-                    colors: [Color(hex: "#4A3525"), Color(hex: "#3D2B1F"), Color(hex: "#2E1F14")],
+                    colors: style.boardColors,
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -72,7 +74,7 @@ struct FretboardView: View {
     // MARK: - Nut
     private var nutView: some View {
         Rectangle()
-            .fill(Color(hex: "#E8D5A3"))
+            .fill(style.nutColor)
             .frame(width: nutWidth, height: fretboardHeight)
     }
 
@@ -82,7 +84,7 @@ struct FretboardView: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [Color(hex: "#A0A0A0"), Color(hex: "#D0D0D0"), Color(hex: "#A0A0A0")],
+                        colors: style.fretColors,
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -99,7 +101,7 @@ struct FretboardView: View {
             Capsule()
                 .fill(
                     LinearGradient(
-                        colors: [Color(hex: "#B8B8B8"), Color(hex: "#E8E8E8"), Color(hex: "#B8B8B8")],
+                        colors: style.stringColors,
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -137,10 +139,35 @@ struct FretboardView: View {
     private func singleDot(at fret: Int, verticalFraction: CGFloat) -> some View {
         let x = nutWidth + CGFloat(fret) * fretWidth - fretWidth / 2
         let y = fretboardHeight * verticalFraction
-        return Circle()
-            .fill(Color.white.opacity(0.25))
-            .frame(width: 14, height: 14)
-            .offset(x: x - 7, y: y - 7)
+        return ZStack {
+            // Base cream
+            Circle()
+                .fill(Color(hex: "#EDE8E0"))
+            // Iridescent shimmer — offset radial blends teal, pink, and white
+            Circle()
+                .fill(RadialGradient(
+                    colors: [
+                        Color.white.opacity(0.95),
+                        Color(hex: "#C8E8F0").opacity(0.60),
+                        Color(hex: "#F0C8E0").opacity(0.40),
+                        Color(hex: "#D0E8D8").opacity(0.25),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: 0.38, y: 0.28),
+                    startRadius: 0,
+                    endRadius: 9
+                ))
+            // Specular highlight — small bright fleck
+            Circle()
+                .fill(Color.white.opacity(0.85))
+                .frame(width: 4, height: 4)
+                .offset(x: -3.5, y: -3.5)
+            // Subtle rim shadow
+            Circle()
+                .stroke(Color(hex: "#A09888").opacity(0.45), lineWidth: 0.75)
+        }
+        .frame(width: 16, height: 16)
+        .offset(x: x - 8, y: y - 8)
     }
 
     // MARK: - Scale highlight dots

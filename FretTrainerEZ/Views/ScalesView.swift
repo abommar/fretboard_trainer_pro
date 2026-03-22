@@ -6,6 +6,10 @@ struct ScalesView: View {
     @State private var selectedRoot: Note = .A
     @State private var selectedScale: ScaleType = .pentatonicMinor
 
+    @AppStorage("fretboardStyle") private var fretboardStyleRaw: String = FretboardStyle.rosewood.rawValue
+    private var fretboardStyle: FretboardStyle { FretboardStyle(rawValue: fretboardStyleRaw) ?? .rosewood }
+    @AppStorage("useFlats") private var useFlats: Bool = false
+
     private let accent  = Color(hex: "#E94560")
     private let bg      = Color(hex: "#1A1A2E")
     private let cardBg  = Color(hex: "#16213E")
@@ -79,7 +83,7 @@ struct ScalesView: View {
                     .frame(height: 16)
                     .background(Color.white.opacity(0.2))
 
-                Text("\(selectedRoot.sharpName) \(selectedScale.rawValue)")
+                Text("\(useFlats ? selectedRoot.flatName : selectedRoot.sharpName) \(selectedScale.rawValue)")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
 
@@ -93,7 +97,7 @@ struct ScalesView: View {
                 HStack(spacing: 4) {
                     ForEach(selectedScale.notes(root: selectedRoot), id: \.rawValue) { note in
                         let isRoot = note == selectedRoot
-                        Text(note.sharpName)
+                        Text(useFlats ? note.flatName : note.sharpName)
                             .font(.system(size: 9, weight: .heavy, design: .rounded))
                             .foregroundColor(isRoot ? .white : .black.opacity(0.75))
                             .padding(.horizontal, 5)
@@ -155,7 +159,8 @@ struct ScalesView: View {
                     highlightString: nil,
                     highlightFret: nil,
                     highlightColor: .clear,
-                    scaleHighlights: computeScaleDots()
+                    scaleHighlights: computeScaleDots(),
+                    style: fretboardStyle
                 )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
@@ -169,7 +174,7 @@ struct ScalesView: View {
     private func rootChip(_ note: Note) -> some View {
         let selected = note == selectedRoot
         return Button(action: { selectedRoot = note }) {
-            Text(note.sharpName)
+            Text(useFlats ? note.flatName : note.sharpName)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundColor(selected ? .white : .white.opacity(0.55))
                 .frame(maxWidth: .infinity)
