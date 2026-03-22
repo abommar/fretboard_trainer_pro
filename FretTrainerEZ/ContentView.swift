@@ -65,8 +65,9 @@ struct ContentView: View {
         }
         .fullScreenCover(item: $activeScreen) { screen in
             switch screen {
-            case .circleOfFifths: CircleOfFifthsView()
-            case .chordCharts:    ChordChartsView()
+            case .circleOfFifths:  CircleOfFifthsView()
+            case .chordCharts:     ChordChartsView()
+            case .chromaticTuner:  ChromaticTunerView()
             }
         }
         .preferredColorScheme(.dark)

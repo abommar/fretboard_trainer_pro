@@ -31,12 +31,13 @@ FretTrainerEZ/
 │   ├── NoteAnswerButtonsView.swift # 12-button grid, correct/wrong animations, adaptive buttonHeight
 │   ├── DrawerMenuView.swift        # Slide-out hamburger drawer + AppScreen enum
 │   ├── CircleOfFifthsView.swift    # Canvas-drawn color-coded circle, tap to see key info card
-│   └── ChordChartsView.swift       # Chord diagram grid, scrollable root/type filters
+│   ├── ChordChartsView.swift       # Chord diagram grid, scrollable root/type filters
+│   └── ChromaticTunerView.swift    # Chromatic tuner: PitchDetector struct + TunerEngine + UI
 ├── ContentView.swift               # Root layout + SnapSlider custom component
 └── FretTrainerEZApp.swift
 
 FretTrainerEZTests/
-└── FretTrainerEZTests.swift   # XCTest: open strings, known positions, octave rule
+└── FretTrainerEZTests.swift   # XCTest: fretboard tests + 15 PitchDetector tuner tests
 ```
 
 ## Key Design Decisions
@@ -59,13 +60,29 @@ FretTrainerEZTests/
 - `SnapSlider` (bottom of ContentView.swift): custom metallic 3-position slider with DragGesture and spring snap
 
 ## Hamburger Menu & Music Tool Screens
-- `AppScreen` enum (in DrawerMenuView.swift): `.circleOfFifths`, `.chordCharts` — conforms to `Identifiable`
+- `AppScreen` enum (in DrawerMenuView.swift): `.circleOfFifths`, `.chordCharts`, `.chromaticTuner` — conforms to `Identifiable`
 - Drawer slides in from left with spring animation; scrim tap-to-close
 - ContentView presents screens via `.fullScreenCover(item: $activeScreen)`
 - Navigation back from each screen uses `@Environment(\.dismiss)`
 - **CircleOfFifthsView**: Canvas-drawn 12-wedge wheel (outer = major, inner = relative minor), tap segment to reveal detail card showing key sig and relative minor
 - **ChordChartsView**: Horizontally scrollable root note chips + chord type chips; LazyVGrid of ChordDiagramView cards
 - **ChordDiagramView**: Drawn with Path/ZStack — wood background, fret wires, string lines, red finger dots, X/O above nut; `baseFret` label for barre positions
+- **ChromaticTunerView**: Mic-based pitch detection, large note name + cents meter needle, standard tuning reference row
+
+## Chromatic Tuner Architecture
+All pitch logic lives in `ChromaticTunerView.swift` — no external dependencies.
+
+**`PitchDetector` (internal struct — fully unit-tested):**
+- `detectPitch(samples: [Float], sampleRate: Float) -> Float?` — Hann-windowed normalized autocorrelation with McLeod "first significant peak" (threshold 0.85 × global max). Detects 50–2000 Hz.
+- `noteInfo(frequency: Float) -> NoteInfo?` — maps frequency to nearest note name + cents deviation via MIDI math
+
+**`TunerEngine` (@Observable class):**
+- Uses `AVAudioEngine` + `installTap` for mic input (4096-sample buffers)
+- **Note confirmation**: requires 3 consecutive frames agreeing on a note before display updates — prevents single-frame glitches
+- **Cents smoothing**: exponential moving average (α = 0.25) on the needle — tune `centsAlpha` (higher = snappier) and `confirmationFrames` (lower = faster response)
+- Requires `NSMicrophoneUsageDescription` — set in build settings via `INFOPLIST_KEY_NSMicrophoneUsageDescription`
+
+**`CentsMeterView`**: Canvas-drawn horizontal meter, ±50 cent range, green/yellow/red zones, moving needle
 
 ## ChordLibrary Data Model
 ```swift
@@ -91,4 +108,4 @@ All views use the same dark theme colors:
 - **Phase 5** — Alternate tunings and instruments
 
 ## What's NOT Built Yet
-No settings screen, no sound effects, no onboarding, no alternate tunings. Chord library only covers open/first-position voicings for common chord types — barre chord shapes and extended voicings not yet added.
+No settings screen, no sound effects, no onboarding, no alternate tunings. Chord library only covers open/first-position voicings for common chord types — barre chord shapes and extended voicings not yet added. Tuner only tested on device (simulator has no real mic).

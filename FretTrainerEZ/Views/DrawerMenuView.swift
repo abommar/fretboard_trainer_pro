@@ -3,11 +3,13 @@ import SwiftUI
 enum AppScreen: Identifiable {
     case circleOfFifths
     case chordCharts
+    case chromaticTuner
 
     var id: String {
         switch self {
-        case .circleOfFifths: return "circleOfFifths"
-        case .chordCharts:    return "chordCharts"
+        case .circleOfFifths:  return "circleOfFifths"
+        case .chordCharts:     return "chordCharts"
+        case .chromaticTuner:  return "chromaticTuner"
         }
     }
 }
@@ -66,6 +68,10 @@ struct DrawerMenuView: View {
 
             menuItem(icon: "music.note.list", title: "Chord Charts", subtitle: "Common voicings") {
                 navigate(to: .chordCharts)
+            }
+
+            menuItem(icon: "tuningfork", title: "Chromatic Tuner", subtitle: "Tune by ear") {
+                navigate(to: .chromaticTuner)
             }
 
             Spacer()

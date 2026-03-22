@@ -21,6 +21,7 @@
 		BB000003000000000000003A /* DrawerMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000003000000000000003B /* DrawerMenuView.swift */; };
 		BB000004000000000000004A /* CircleOfFifthsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000004000000000000004B /* CircleOfFifthsView.swift */; };
 		BB000005000000000000005A /* ChordChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000005000000000000005B /* ChordChartsView.swift */; };
+		BB000006000000000000006A /* ChromaticTunerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000006000000000000006B /* ChromaticTunerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		BB000003000000000000003B /* DrawerMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawerMenuView.swift; sourceTree = "<group>"; };
 		BB000004000000000000004B /* CircleOfFifthsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleOfFifthsView.swift; sourceTree = "<group>"; };
 		BB000005000000000000005B /* ChordChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordChartsView.swift; sourceTree = "<group>"; };
+		BB000006000000000000006B /* ChromaticTunerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaticTunerView.swift; sourceTree = "<group>"; };
 		AA00000A0000000000000010 /* FretTrainerEZ.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FretTrainerEZ.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA00000B0000000000000010 /* FretTrainerEZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FretTrainerEZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -75,6 +77,7 @@
 				BB000003000000000000003B /* DrawerMenuView.swift */,
 				BB000004000000000000004B /* CircleOfFifthsView.swift */,
 				BB000005000000000000005B /* ChordChartsView.swift */,
+				BB000006000000000000006B /* ChromaticTunerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -216,6 +219,7 @@
 				BB000003000000000000003A /* DrawerMenuView.swift in Sources */,
 				BB000004000000000000004A /* CircleOfFifthsView.swift in Sources */,
 				BB000005000000000000005A /* ChordChartsView.swift in Sources */,
+				BB000006000000000000006A /* ChromaticTunerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -394,6 +398,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The tuner listens to your guitar to detect pitch.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -422,6 +427,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The tuner listens to your guitar to detect pitch.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
