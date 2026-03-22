@@ -1,7 +1,7 @@
 # FretTrainerEZ — Claude Context
 
 ## What This Is
-An iOS guitar fretboard trainer app built in Swift/SwiftUI. The user taps the correct note name for a highlighted fret position ("Name That Note" mode). Phase 1 complete, hamburger menu + music tools screens added.
+An iOS guitar fretboard trainer app built in Swift/SwiftUI. Phases 1 & 2 complete. Two game modes, study mode, and four music tool screens.
 
 ## Hard Constraints (Never Violate)
 - **No third-party dependencies.** Apple frameworks only (SwiftUI, SwiftData, Foundation, CoreHaptics). No SPM packages, no CocoaPods.
@@ -20,20 +20,24 @@ An iOS guitar fretboard trainer app built in Swift/SwiftUI. The user taps the co
 FretTrainerEZ/
 ├── Models/
 │   ├── Note.swift             # 12-note enum, sharp/flat display, chromatic math
-│   ├── GuitarTuning.swift     # Tuning struct, standard EADGBE preset
+│   ├── GuitarTuning.swift     # Tuning struct + 10 alternate tuning presets
 │   ├── Fretboard.swift        # note(string:fret:), allPositions(for:)
-│   ├── ChordLibrary.swift     # ChordVoicing struct, ChordType enum, 40+ static voicings
+│   ├── ChordLibrary.swift     # ChordVoicing struct, ChordType enum (7 types), 70+ voicings all 12 roots; chordTones computed
+│   ├── ScaleLibrary.swift     # ScaleType enum, 10 scales with intervals + flavor strings
 │   └── MusicTheory.swift      # Circle of Fifths data (KeyInfo: major, relative, sharpsOrFlats)
 ├── Game/
-│   └── GameState.swift        # @Observable, Difficulty enum, AnswerState, timed mode, haptics
+│   └── GameState.swift        # @Observable, Difficulty, AnswerState, FretAnswerState, FretPosition,
+│                              #   timed mode, haptics, foundFrets Set, best score UserDefaults, skipNote()
 ├── Views/
-│   ├── FretboardView.swift         # Scrollable fretboard, wood theme, highlight circle
-│   ├── NoteAnswerButtonsView.swift # 12-button grid, correct/wrong animations, adaptive buttonHeight
+│   ├── FretboardView.swift         # Scrollable fretboard, wood theme; params: highlightString/Fret/Color,
+│   │                               #   foundPositions, showNoteLabels, studyFilterNote, scaleHighlights, onFretTap
+│   ├── NoteAnswerButtonsView.swift # 12-button grid; study mode: onStudyTap + studySelectedNote
 │   ├── DrawerMenuView.swift        # Slide-out hamburger drawer + AppScreen enum
 │   ├── CircleOfFifthsView.swift    # Canvas-drawn color-coded circle, tap to see key info card
-│   ├── ChordChartsView.swift       # Chord diagram grid, scrollable root/type filters
-│   └── ChromaticTunerView.swift    # Chromatic tuner: PitchDetector struct + TunerEngine + UI
-├── ContentView.swift               # Root layout + SnapSlider custom component
+│   ├── ChordChartsView.swift       # Chord diagram grid, root/type filters, chord tone pills per card
+│   ├── ChromaticTunerView.swift    # Chromatic tuner: PitchDetector struct + TunerEngine + UI
+│   └── ScalesView.swift            # Scale Explorer (landscape-only): root grid + wheel picker + fretboard dots
+├── ContentView.swift               # Root layout + SnapSlider; isStudyMode + studyHighlightNote state
 └── FretTrainerEZApp.swift
 
 FretTrainerEZTests/
@@ -59,15 +63,28 @@ FretTrainerEZTests/
 - `canAnswer` computed var gates submissions when timer not active
 - `SnapSlider` (bottom of ContentView.swift): custom metallic 3-position slider with DragGesture and spring snap
 
+## Game Modes
+- **Name That Note**: fret is highlighted, user taps correct note name from 12-button grid
+- **Find The Fret**: note name shown, user taps ALL positions of that note on the fretboard; each correct tap stays highlighted green; wrong taps flash red 0.6s; round advances when `required.isSubset(of: foundFrets)`; skip button skips to a different note
+- `FretPosition: Hashable` struct used for multi-tap tracking; `foundFrets: Set<FretPosition>` in GameState
+- Best timed scores persisted via UserDefaults, key: `"best_\(gameMode.rawValue)_\(timerDuration)"`
+
+## Study Mode
+- **Study toggle** in header: shows all note labels on fretboard as color-coded pills (12 hues, one per note)
+- Tapping a note button in study mode filters the fretboard to show only that note's positions; tap again to show all
+- Game mechanics are fully disabled in study mode (no scoring, no fret tap submission)
+- `isStudyMode: Bool` + `studyHighlightNote: Note?` in ContentView; `studyFilterNote` passed to FretboardView
+
 ## Hamburger Menu & Music Tool Screens
-- `AppScreen` enum (in DrawerMenuView.swift): `.circleOfFifths`, `.chordCharts`, `.chromaticTuner` — conforms to `Identifiable`
+- `AppScreen` enum (in DrawerMenuView.swift): `.circleOfFifths`, `.chordCharts`, `.chromaticTuner`, `.scales` — conforms to `Identifiable`
 - Drawer slides in from left with spring animation; scrim tap-to-close
 - ContentView presents screens via `.fullScreenCover(item: $activeScreen)`
 - Navigation back from each screen uses `@Environment(\.dismiss)`
-- **CircleOfFifthsView**: Canvas-drawn 12-wedge wheel (outer = major, inner = relative minor), tap segment to reveal detail card showing key sig and relative minor
-- **ChordChartsView**: Horizontally scrollable root note chips + chord type chips; LazyVGrid of ChordDiagramView cards
-- **ChordDiagramView**: Drawn with Path/ZStack — wood background, fret wires, string lines, red finger dots, X/O above nut; `baseFret` label for barre positions
-- **ChromaticTunerView**: Mic-based pitch detection, large note name + cents meter needle, standard tuning reference row
+- **CircleOfFifthsView**: Canvas-drawn 12-wedge wheel (outer = major, inner = relative minor), tap segment to reveal detail card
+- **ChordChartsView**: Root note chips + chord type chips; LazyVGrid of ChordDiagramView cards; each card shows chord name + color-coded chord tone pills + diagram
+- **ChordDiagramView**: wood background, fret wires, string lines, red finger dots, X/O above nut; `baseFret` label for barre positions; chord tones derived from `ChordType.intervals`
+- **ChromaticTunerView**: Mic-based pitch detection, large note name + cents meter needle, tuning reference row
+- **ScalesView**: Landscape-only scale explorer; portrait shows rotate prompt; 4-column root grid + `.wheel` scale picker; fretboard with root (red) and scale tone (blue) dots
 
 ## Chromatic Tuner Architecture
 All pitch logic lives in `ChromaticTunerView.swift` — no external dependencies.
@@ -90,10 +107,22 @@ struct ChordVoicing {
     let root: Note
     let type: ChordType        // .major, .minor, .dominant7, .major7, .minor7, .sus2, .sus4
     let frets: [Int?]          // 6 values: nil=muted, 0=open, 1+=fret number; index 0=low E
-    let baseFret: Int          // diagram starts here (usually 1)
+    let baseFret: Int          // diagram starts here (usually 1); dot position = fret - baseFret + 1
+    var chordTones: [Note]     // computed from ChordType.intervals mapped over root
 }
 ```
-Static library has 40+ voicings. Add more to `ChordLibrary.all` array.
+All 12 roots have major, minor, dom7, maj7, m7. Natural notes also have sus2/sus4 where practical. 70+ voicings total. Sharps/flats use barre shapes (E-shape for F#/G#, A-shape for Bb/C#/Eb).
+
+## ScaleLibrary Data Model
+```swift
+enum ScaleType: String, CaseIterable {
+    // pentatonicMinor, pentatonicMajor, blues, major, naturalMinor,
+    // dorian, mixolydian, harmonicMinor, phrygian, lydian
+    var intervals: [Int]   // semitone offsets from root
+    var flavor: String     // one-line mood description
+    func notes(root: Note) -> [Note]
+}
+```
 
 ## Shared Color Palette
 All views use the same dark theme colors:
@@ -103,9 +132,9 @@ All views use the same dark theme colors:
 - Drawer bg: `#111128`
 
 ## Roadmap
-- **Phase 2** — "Find The Fret" inverse mode ← NEXT
 - **Phase 3** — Fretboard style picker
-- **Phase 5** — Alternate tunings and instruments
+- **Phase 4** — Sound effects / note playback
+- **Phase 5** — Extended chord voicings (barre shapes, 9th/11th/13th)
 
 ## What's NOT Built Yet
-No settings screen, no sound effects, no onboarding, no alternate tunings. Chord library only covers open/first-position voicings for common chord types — barre chord shapes and extended voicings not yet added. Tuner only tested on device (simulator has no real mic).
+No settings screen, no sound effects, no onboarding. Chord library has all 12 roots × 5 chord types; sus2/sus4 only for natural notes with practical open voicings. Tuner untested on simulator (no real mic). Scale Explorer landscape-only by design.

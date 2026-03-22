@@ -2,6 +2,16 @@ import Foundation
 import CoreHaptics
 import Observation
 
+enum GameMode: String, CaseIterable {
+    case nameTheNote = "Name That Note"
+    case findTheFret = "Find The Fret"
+}
+
+struct FretPosition: Hashable {
+    let string: Int
+    let fret: Int
+}
+
 enum Difficulty: String, CaseIterable {
     case beginner     = "Beginner"
     case intermediate = "Intermediate"
@@ -22,6 +32,8 @@ final class GameState {
 
     // Difficulty
     var difficulty: Difficulty = .beginner
+
+    var gameMode: GameMode = .nameTheNote
 
     // Current question
     var currentString: Int = 0
@@ -44,6 +56,21 @@ final class GameState {
         case wrong(tapped: Note, correct: Note)
     }
     var answerState: AnswerState = .idle
+
+    enum FretAnswerState: Equatable {
+        case idle
+        case correct(string: Int, fret: Int)
+        case wrong(string: Int, fret: Int)
+    }
+    var fretAnswerState: FretAnswerState = .idle
+
+    // Find The Fret: positions the user has already tapped correctly this round
+    var foundFrets: Set<FretPosition> = []
+
+    // Best score persistence
+    var isNewBest: Bool = false
+    var bestTimedScore: Int { UserDefaults.standard.integer(forKey: timedScoreKey) }
+    private var timedScoreKey: String { "best_\(gameMode.rawValue)_\(timerDuration)" }
 
     // Timer
     var isTimedMode: Bool = false
@@ -68,9 +95,18 @@ final class GameState {
 
     func nextQuestion() {
         answerState = .idle
-        currentString = Int.random(in: 0..<fretboard.tuning.stringCount)
-        currentFret = Int.random(in: 0...difficulty.maxFret)
-        correctNote = fretboard.note(string: currentString, fret: currentFret)
+        fretAnswerState = .idle
+        foundFrets = []
+        if gameMode == .nameTheNote {
+            currentString = Int.random(in: 0..<fretboard.tuning.stringCount)
+            currentFret   = Int.random(in: 0...difficulty.maxFret)
+            correctNote   = fretboard.note(string: currentString, fret: currentFret)
+        } else {
+            // Pick a random note; position is unknown — user must find it
+            correctNote   = Note.allCases.randomElement()!
+            currentString = 0
+            currentFret   = 0
+        }
     }
 
     func setDifficulty(_ newDifficulty: Difficulty) {
@@ -104,7 +140,60 @@ final class GameState {
         }
     }
 
+    func submitFret(string: Int, fret: Int) {
+        guard canAnswer else { return }
+        let pos = FretPosition(string: string, fret: fret)
+        guard !foundFrets.contains(pos) else { return }   // already lit up
+        guard case .idle = fretAnswerState else { return } // block during wrong flash / completion
+
+        if fretboard.note(string: string, fret: fret) == correctNote {
+            foundFrets.insert(pos)
+            playHaptic(success: true)
+
+            // Advance when all required positions (within difficulty range) are found
+            let required = Set(
+                fretboard.allPositions(for: correctNote)
+                    .filter { $0.fret <= difficulty.maxFret }
+                    .map { FretPosition(string: $0.string, fret: $0.fret) }
+            )
+            if required.isSubset(of: foundFrets) {
+                correctCount += 1
+                totalCount += 1
+                fretAnswerState = .correct(string: string, fret: fret) // blocks further taps
+                DispatchQueue.main.asyncAfter(deadline: .now() + (isTimedMode ? 0.5 : 0.8)) { [weak self] in
+                    guard let self, !self.isTimeUp else { return }
+                    self.nextQuestion()
+                }
+            }
+        } else {
+            totalCount += 1
+            fretAnswerState = .wrong(string: string, fret: fret)
+            playHaptic(success: false)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                guard let self else { return }
+                if case .wrong = self.fretAnswerState { self.fretAnswerState = .idle }
+            }
+        }
+    }
+
+    func skipNote() {
+        guard gameMode == .findTheFret else { return }
+        let other = Note.allCases.filter { $0 != correctNote }
+        correctNote = other.randomElement() ?? correctNote
+        answerState = .idle
+        fretAnswerState = .idle
+        foundFrets = []
+    }
+
+    func setGameMode(_ mode: GameMode) {
+        gameMode = mode
+        reset()
+    }
+
     func reset() {
+        fretAnswerState = .idle
+        foundFrets = []
+        isNewBest = false
         stopTimedGame()
         correctCount = 0
         totalCount = 0
@@ -114,6 +203,8 @@ final class GameState {
     func startTimedGame() {
         correctCount = 0
         totalCount = 0
+        isNewBest = false
+        foundFrets = []
         timeRemaining = timerDuration
         isTimeUp = false
         isTimerActive = true
@@ -130,8 +221,15 @@ final class GameState {
                 self.answerState = .idle
                 self.countdownTimer?.invalidate()
                 self.countdownTimer = nil
+                self.saveTimedScoreIfBetter()
             }
         }
+    }
+
+    private func saveTimedScoreIfBetter() {
+        guard correctCount > bestTimedScore else { return }
+        UserDefaults.standard.set(correctCount, forKey: timedScoreKey)
+        isNewBest = true
     }
 
     func stopTimedGame() {

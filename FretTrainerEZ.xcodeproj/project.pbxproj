@@ -22,6 +22,8 @@
 		BB000004000000000000004A /* CircleOfFifthsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000004000000000000004B /* CircleOfFifthsView.swift */; };
 		BB000005000000000000005A /* ChordChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000005000000000000005B /* ChordChartsView.swift */; };
 		BB000006000000000000006A /* ChromaticTunerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000006000000000000006B /* ChromaticTunerView.swift */; };
+		CC000001000000000000001A /* ScaleLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001000000000000001B /* ScaleLibrary.swift */; };
+		CC000002000000000000002A /* ScalesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002000000000000002B /* ScalesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +42,8 @@
 		BB000004000000000000004B /* CircleOfFifthsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleOfFifthsView.swift; sourceTree = "<group>"; };
 		BB000005000000000000005B /* ChordChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordChartsView.swift; sourceTree = "<group>"; };
 		BB000006000000000000006B /* ChromaticTunerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaticTunerView.swift; sourceTree = "<group>"; };
+		CC000001000000000000001B /* ScaleLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaleLibrary.swift; sourceTree = "<group>"; };
+		CC000002000000000000002B /* ScalesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScalesView.swift; sourceTree = "<group>"; };
 		AA00000A0000000000000010 /* FretTrainerEZ.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FretTrainerEZ.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA00000B0000000000000010 /* FretTrainerEZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FretTrainerEZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -65,6 +69,7 @@
 				AA000005000000000000005B /* Fretboard.swift */,
 				BB000001000000000000001B /* ChordLibrary.swift */,
 				BB000002000000000000002B /* MusicTheory.swift */,
+				CC000001000000000000001B /* ScaleLibrary.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -78,6 +83,7 @@
 				BB000004000000000000004B /* CircleOfFifthsView.swift */,
 				BB000005000000000000005B /* ChordChartsView.swift */,
 				BB000006000000000000006B /* ChromaticTunerView.swift */,
+				CC000002000000000000002B /* ScalesView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -220,6 +226,8 @@
 				BB000004000000000000004A /* CircleOfFifthsView.swift in Sources */,
 				BB000005000000000000005A /* ChordChartsView.swift in Sources */,
 				BB000006000000000000006A /* ChromaticTunerView.swift in Sources */,
+				CC000001000000000000001A /* ScaleLibrary.swift in Sources */,
+				CC000002000000000000002A /* ScalesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

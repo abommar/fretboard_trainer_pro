@@ -275,6 +275,7 @@ struct CentsMeterView: View {
 struct ChromaticTunerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var engine = TunerEngine()
+    @State private var selectedTuning: GuitarTuning = .standard
 
     private let accent  = Color(hex: "#E94560")
     private let bg      = Color(hex: "#1A1A2E")
@@ -304,22 +305,28 @@ struct ChromaticTunerView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 56)
-                .padding(.bottom, 24)
+                .padding(.bottom, 12)
 
-                Spacer()
+                // Tuning wheel picker
+                tuningPicker
+                    .padding(.bottom, 16)
+
+                // String reference row
+                stringReferenceRow
+                    .padding(.bottom, 20)
 
                 // Note name
                 Text(engine.detectedNote)
-                    .font(.system(size: 100, weight: .heavy, design: .rounded))
+                    .font(.system(size: 90, weight: .heavy, design: .rounded))
                     .foregroundColor(noteColor)
-                    .frame(height: 115)
+                    .frame(height: 105)
                     .animation(.easeInOut(duration: 0.1), value: engine.detectedNote)
 
                 // Frequency
                 Text(engine.frequency > 0 ? String(format: "%.1f Hz", engine.frequency) : " ")
                     .font(.system(size: 13, design: .monospaced))
                     .foregroundColor(.white.opacity(0.4))
-                    .padding(.bottom, 36)
+                    .padding(.bottom, 24)
 
                 // Cents meter card
                 VStack(spacing: 12) {
@@ -337,19 +344,7 @@ struct ChromaticTunerView: View {
                 .background(RoundedRectangle(cornerRadius: 14).fill(cardBg))
                 .padding(.horizontal, 28)
 
-                Spacer()
-
-                // Standard tuning reference
-                HStack(spacing: 0) {
-                    ForEach(["E2", "A2", "D3", "G3", "B3", "E4"], id: \.self) { name in
-                        Text(name)
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.3))
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 20)
+                Spacer(minLength: 0)
 
                 // Start / Stop button
                 Button(action: toggleListening) {
@@ -375,7 +370,87 @@ struct ChromaticTunerView: View {
         .preferredColorScheme(.dark)
     }
 
+    // MARK: - Tuning Picker
+
+    private var tuningPicker: some View {
+        VStack(spacing: 0) {
+            Text("TUNING")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(.white.opacity(0.35))
+                .tracking(1.5)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 2)
+
+            Picker("Tuning", selection: $selectedTuning) {
+                ForEach(GuitarTuning.all) { tuning in
+                    Text(tuning.name)
+                        .font(.system(size: 15, weight: .medium))
+                        .tag(tuning)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(height: 100)
+            .clipped()
+        }
+    }
+
+    // MARK: - String Reference Row
+
+    /// Shows all 6 strings for the selected tuning.
+    /// Each column displays the string number, target note, and — when the tuning
+    /// differs from standard — the standard note in parentheses as a reference so
+    /// the player always knows which physical string they are on.
+    private var stringReferenceRow: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<6) { idx in
+                let stringNum  = 6 - idx                           // 6 (low E) … 1 (high E)
+                let target     = selectedTuning.strings[idx]
+                let stdNote    = GuitarTuning.standard.strings[idx]
+                let targetName = target.displayName(useFlats: selectedTuning.useFlats)
+                let stdName    = stdNote.sharpName
+                let active     = isActiveString(idx)
+                let changed    = target != stdNote
+
+                VStack(spacing: 2) {
+                    // String number
+                    Text("\(stringNum)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white.opacity(0.25))
+
+                    // Target note — highlighted when this string is active
+                    Text(targetName)
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        .foregroundColor(active ? noteColor : .white.opacity(0.75))
+
+                    // Standard note reference — shown only when it differs from target
+                    Text(changed ? "(\(stdName))" : " ")
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.28))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(active ? Color.white.opacity(0.07) : Color.clear)
+                )
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 12).fill(cardBg))
+        .padding(.horizontal, 20)
+    }
+
     // MARK: Helpers
+
+    /// Returns true when the tuner has detected a note that matches the target
+    /// for the given string index (0 = low E). Comparison uses sharp names since
+    /// PitchDetector always returns sharp note names.
+    private func isActiveString(_ idx: Int) -> Bool {
+        guard engine.isListening, engine.detectedNote != "--" else { return false }
+        return selectedTuning.strings[idx].sharpName == engine.detectedNote
+    }
 
     private var noteColor: Color {
         guard engine.isListening && engine.detectedNote != "--" else {

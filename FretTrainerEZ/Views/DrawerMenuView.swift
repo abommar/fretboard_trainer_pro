@@ -4,12 +4,14 @@ enum AppScreen: Identifiable {
     case circleOfFifths
     case chordCharts
     case chromaticTuner
+    case scales
 
     var id: String {
         switch self {
         case .circleOfFifths:  return "circleOfFifths"
         case .chordCharts:     return "chordCharts"
         case .chromaticTuner:  return "chromaticTuner"
+        case .scales:          return "scales"
         }
     }
 }
@@ -72,6 +74,10 @@ struct DrawerMenuView: View {
 
             menuItem(icon: "tuningfork", title: "Chromatic Tuner", subtitle: "Tune by ear") {
                 navigate(to: .chromaticTuner)
+            }
+
+            menuItem(icon: "music.quarternote.3", title: "Scale Explorer", subtitle: "Landscape · 10 scales") {
+                navigate(to: .scales)
             }
 
             Spacer()

@@ -4,16 +4,44 @@ struct ContentView: View {
     @State private var gameState = GameState()
     @State private var isDrawerOpen = false
     @State private var activeScreen: AppScreen? = nil
+    @State private var isStudyMode = false
+    @State private var studyHighlightNote: Note? = nil
 
     private let accent = Color(hex: "#E94560")
     private let bg     = Color(hex: "#1A1A2E")
     private let cardBg = Color(hex: "#16213E")
 
+    private var activeHighlightString: Int? {
+        switch gameState.gameMode {
+        case .nameTheNote:
+            return gameState.currentString
+        case .findTheFret:
+            // Only show the transient red dot for wrong taps; correct ones stay in foundPositions
+            if case .wrong(let s, _) = gameState.fretAnswerState { return s }
+            return nil
+        }
+    }
+
+    private var activeHighlightFret: Int? {
+        switch gameState.gameMode {
+        case .nameTheNote:
+            return gameState.currentFret
+        case .findTheFret:
+            if case .wrong(_, let f) = gameState.fretAnswerState { return f }
+            return nil
+        }
+    }
+
     private var highlightColor: Color {
-        switch gameState.answerState {
-        case .idle:    return accent
-        case .correct: return .green
-        case .wrong:   return .red
+        switch gameState.gameMode {
+        case .nameTheNote:
+            switch gameState.answerState {
+            case .idle:    return accent
+            case .correct: return .green
+            case .wrong:   return .red
+            }
+        case .findTheFret:
+            return .red  // only wrong taps get the transient dot
         }
     }
 
@@ -30,15 +58,27 @@ struct ContentView: View {
                     .padding(.top, hPad)
                     .padding(.bottom, compact ? 4 : 6)
 
+                gameModeRow
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, compact ? 4 : 6)
+
                 controlRow
                     .padding(.horizontal, 16)
                     .padding(.bottom, compact ? 4 : 6)
 
                 FretboardView(
                     fretboard: Fretboard(),
-                    highlightString: gameState.currentString,
-                    highlightFret: gameState.currentFret,
-                    highlightColor: highlightColor
+                    highlightString: isStudyMode ? nil : activeHighlightString,
+                    highlightFret: isStudyMode ? nil : activeHighlightFret,
+                    highlightColor: highlightColor,
+                    foundPositions: !isStudyMode && gameState.gameMode == .findTheFret
+                        ? Array(gameState.foundFrets)
+                        : [],
+                    showNoteLabels: isStudyMode,
+                    studyFilterNote: studyHighlightNote,
+                    onFretTap: !isStudyMode && gameState.gameMode == .findTheFret
+                        ? { s, f in gameState.submitFret(string: s, fret: f) }
+                        : nil
                 )
                 .frame(height: fbH)
                 .clipped()
@@ -50,7 +90,18 @@ struct ContentView: View {
                 promptText
                     .padding(.bottom, compact ? 3 : 5)
 
-                NoteAnswerButtonsView(gameState: gameState, buttonHeight: btnH)
+                if gameState.gameMode == .nameTheNote {
+                    NoteAnswerButtonsView(
+                        gameState: gameState,
+                        buttonHeight: btnH,
+                        onStudyTap: isStudyMode ? { note in
+                            studyHighlightNote = (studyHighlightNote == note) ? nil : note
+                        } : nil,
+                        studySelectedNote: studyHighlightNote
+                    )
+                } else {
+                    findTheFretPrompt(btnH: btnH)
+                }
 
                 Spacer(minLength: 0)
             }
@@ -68,18 +119,20 @@ struct ContentView: View {
             case .circleOfFifths:  CircleOfFifthsView()
             case .chordCharts:     ChordChartsView()
             case .chromaticTuner:  ChromaticTunerView()
+            case .scales:          ScalesView()
             }
         }
         .preferredColorScheme(.dark)
     }
 
     private func fretboardHeight(_ geo: GeometryProxy, compact: Bool, btnH: CGFloat) -> CGFloat {
-        let headerH:  CGFloat = compact ? 38  : 48
-        let controlH: CGFloat = compact ? 44  : 54
-        let dividerH: CGFloat = compact ? 8   : 12
-        let promptH:  CGFloat = compact ? 18  : 24
-        let buttonsH: CGFloat = btnH * 2 + 8  // 2 rows + spacing
-        let fixed = headerH + controlH + dividerH + promptH + buttonsH
+        let headerH:   CGFloat = compact ? 38  : 48
+        let gameModeH: CGFloat = compact ? 34  : 40
+        let controlH:  CGFloat = compact ? 44  : 54
+        let dividerH:  CGFloat = compact ? 8   : 12
+        let promptH:   CGFloat = compact ? 18  : 24
+        let buttonsH:  CGFloat = btnH * 2 + 8  // 2 rows + spacing
+        let fixed = headerH + gameModeH + controlH + dividerH + promptH + buttonsH
         return min(max(geo.size.height - fixed, 120), 200)
     }
 
@@ -99,7 +152,7 @@ struct ContentView: View {
                 Text("FretTrainerEZ")
                     .font(.system(size: 18, weight: .heavy, design: .rounded))
                     .foregroundColor(.white)
-                Text("Name That Note")
+                Text(gameState.gameMode.rawValue)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(accent)
             }
@@ -115,6 +168,27 @@ struct ContentView: View {
                 }
                 .padding(.trailing, 4)
             }
+            Button(action: {
+                isStudyMode.toggle()
+                if !isStudyMode { studyHighlightNote = nil }
+            }) {
+                Text("Study")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(isStudyMode ? .black : .white.opacity(0.7))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 7)
+                            .fill(isStudyMode ? Color.yellow : Color.clear)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 7)
+                                    .stroke(isStudyMode ? Color.yellow : Color.white.opacity(0.3), lineWidth: 1.5)
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+            .animation(.easeInOut(duration: 0.15), value: isStudyMode)
+
             Button("Reset") { gameState.reset() }
                 .buttonStyle(.plain)
                 .font(.system(size: 11, weight: .semibold))
@@ -130,6 +204,73 @@ struct ContentView: View {
         if p >= 80 { return .green }
         if p >= 60 { return .yellow }
         return accent
+    }
+
+    // MARK: - Game Mode Row
+
+    private var gameModeRow: some View {
+        Picker("", selection: Binding(
+            get: { gameState.gameMode },
+            set: { gameState.setGameMode($0); studyHighlightNote = nil }
+        )) {
+            ForEach(GameMode.allCases, id: \.self) { mode in
+                Text(mode.rawValue).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .tint(accent)
+    }
+
+    // MARK: - Find The Fret Prompt
+
+    private func findTheFretPrompt(btnH: CGFloat) -> some View {
+        let cardBg = Color(hex: "#16213E")
+        return ZStack {
+            RoundedRectangle(cornerRadius: 12).fill(cardBg)
+            HStack {
+                Spacer()
+                VStack(spacing: 4) {
+                    Text(gameState.correctNote.sharpName)
+                        .font(.system(size: btnH * 1.4, weight: .heavy, design: .rounded))
+                        .foregroundColor(findTheFretNoteColor)
+                        .animation(.easeInOut(duration: 0.15), value: gameState.fretAnswerState)
+                    Text(findTheFretFeedback)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(findTheFretNoteColor.opacity(0.8))
+                        .animation(.easeInOut(duration: 0.15), value: gameState.fretAnswerState)
+                }
+                Spacer()
+                Button(action: { gameState.skipNote() }) {
+                    VStack(spacing: 2) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 14))
+                        Text("Skip")
+                            .font(.system(size: 9, weight: .medium))
+                    }
+                    .foregroundColor(.white.opacity(0.35))
+                    .padding(.trailing, 14)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(height: btnH * 2 + 8)
+        .padding(.horizontal, 12)
+    }
+
+    private var findTheFretNoteColor: Color {
+        switch gameState.fretAnswerState {
+        case .idle:    return .white
+        case .correct: return .green
+        case .wrong:   return accent
+        }
+    }
+
+    private var findTheFretFeedback: String {
+        switch gameState.fretAnswerState {
+        case .idle:    return "tap it on the fretboard"
+        case .correct: return "correct!"
+        case .wrong:   return "wrong — keep looking"
+        }
     }
 
     // MARK: - Single Control Row
@@ -211,6 +352,13 @@ struct ContentView: View {
             .pickerStyle(.segmented)
             .tint(accent)
 
+            if gameState.bestTimedScore > 0 {
+                Text("Best: \(gameState.bestTimedScore)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(.yellow.opacity(0.8))
+                    .lineLimit(1)
+            }
+
             Button(action: { gameState.startTimedGame() }) {
                 Text("Start")
                     .font(.system(size: 11, weight: .bold))
@@ -268,8 +416,12 @@ struct ContentView: View {
             Text("Tap Start to begin")
                 .font(.system(size: 12))
                 .foregroundColor(.white.opacity(0.4))
-        } else {
+        } else if gameState.gameMode == .nameTheNote {
             Text("What note is highlighted?")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
+        } else {
+            Text("Tap every \(gameState.correctNote.sharpName) on the fretboard")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
         }
@@ -291,6 +443,16 @@ struct ContentView: View {
                     Text("notes correct")
                         .font(.system(size: 15))
                         .foregroundColor(.white.opacity(0.6))
+                    if gameState.isNewBest {
+                        Text("🎉 New Best!")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(.yellow)
+                            .padding(.top, 2)
+                    } else if gameState.bestTimedScore > 0 {
+                        Text("Best: \(gameState.bestTimedScore)")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.45))
+                    }
                 }
                 Button(action: { gameState.startTimedGame() }) {
                     Text("Play Again")

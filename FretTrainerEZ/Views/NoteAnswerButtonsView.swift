@@ -3,13 +3,23 @@ import SwiftUI
 struct NoteAnswerButtonsView: View {
     let gameState: GameState
     var buttonHeight: CGFloat = 44
+    /// When non-nil the grid is in study mode: tapping a note calls this instead of scoring.
+    var onStudyTap: ((Note) -> Void)? = nil
+    /// The note currently highlighted in study mode (nil = none selected).
+    var studySelectedNote: Note? = nil
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 6)
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(Note.allCases, id: \.self) { note in
-                NoteButton(note: note, gameState: gameState, buttonHeight: buttonHeight)
+                NoteButton(
+                    note: note,
+                    gameState: gameState,
+                    buttonHeight: buttonHeight,
+                    onStudyTap: onStudyTap,
+                    studySelectedNote: studySelectedNote
+                )
             }
         }
         .padding(.horizontal, 12)
@@ -20,10 +30,26 @@ private struct NoteButton: View {
     let note: Note
     let gameState: GameState
     var buttonHeight: CGFloat = 44
+    var onStudyTap: ((Note) -> Void)? = nil
+    var studySelectedNote: Note? = nil
 
-    @State private var isPressed = false
+    private var isStudyMode: Bool { onStudyTap != nil }
+    private var isStudySelected: Bool { studySelectedNote == note }
+
+    private var studyColor: Color {
+        let hue = Double(note.rawValue) / 12.0
+        return Color(hue: hue, saturation: 0.80, brightness: 0.95)
+    }
+
+    private var studyTextColor: Color {
+        let hue = Double(note.rawValue) / 12.0
+        return (hue > 0.14 && hue < 0.56) ? Color.black.opacity(0.85) : .white
+    }
 
     private var buttonColor: Color {
+        if isStudyMode {
+            return isStudySelected ? studyColor : Color(hex: "#2A2A4A")
+        }
         switch gameState.answerState {
         case .idle:
             return Color(hex: "#2A2A4A")
@@ -32,12 +58,15 @@ private struct NoteButton: View {
             return Color(hex: "#2A2A4A")
         case .wrong(let tapped, let correct):
             if note == tapped { return .red }
-            if note == correct { return Color(hex: "#2A2A4A") } // green outline handled separately
+            if note == correct { return Color(hex: "#2A2A4A") }
             return Color(hex: "#2A2A4A")
         }
     }
 
     private var borderColor: Color {
+        if isStudyMode {
+            return isStudySelected ? studyColor.opacity(0.5) : .clear
+        }
         switch gameState.answerState {
         case .wrong(_, let correct):
             if note == correct { return .green }
@@ -46,13 +75,22 @@ private struct NoteButton: View {
         return .clear
     }
 
+    private var labelColor: Color {
+        if isStudyMode && isStudySelected { return studyTextColor }
+        return .white
+    }
+
     var body: some View {
         Button {
-            gameState.submit(answer: note)
+            if let onStudyTap {
+                onStudyTap(note)
+            } else {
+                gameState.submit(answer: note)
+            }
         } label: {
             Text(note.sharpName)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(labelColor)
                 .frame(maxWidth: .infinity)
                 .frame(height: buttonHeight)
                 .background(
@@ -64,8 +102,8 @@ private struct NoteButton: View {
                         )
                 )
         }
-        .animation(.easeInOut(duration: 0.15), value: gameState.answerState)
-        .disabled({
+        .animation(.easeInOut(duration: 0.15), value: isStudyMode ? isStudySelected : (gameState.answerState == .idle))
+        .disabled(!isStudyMode && {
             if !gameState.canAnswer { return true }
             if case .idle = gameState.answerState { return false }
             return true
