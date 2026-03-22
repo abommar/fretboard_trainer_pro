@@ -2,13 +2,14 @@ import SwiftUI
 
 struct NoteAnswerButtonsView: View {
     let gameState: GameState
+    var buttonHeight: CGFloat = 44
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 6)
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 10) {
+        LazyVGrid(columns: columns, spacing: 8) {
             ForEach(Note.allCases, id: \.self) { note in
-                NoteButton(note: note, gameState: gameState)
+                NoteButton(note: note, gameState: gameState, buttonHeight: buttonHeight)
             }
         }
         .padding(.horizontal, 12)
@@ -18,6 +19,7 @@ struct NoteAnswerButtonsView: View {
 private struct NoteButton: View {
     let note: Note
     let gameState: GameState
+    var buttonHeight: CGFloat = 44
 
     @State private var isPressed = false
 
@@ -52,7 +54,7 @@ private struct NoteButton: View {
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
+                .frame(height: buttonHeight)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
                         .fill(buttonColor)
@@ -64,6 +66,7 @@ private struct NoteButton: View {
         }
         .animation(.easeInOut(duration: 0.15), value: gameState.answerState)
         .disabled({
+            if !gameState.canAnswer { return true }
             if case .idle = gameState.answerState { return false }
             return true
         }())

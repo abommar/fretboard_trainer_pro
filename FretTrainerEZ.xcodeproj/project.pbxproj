@@ -16,6 +16,11 @@
 		AA000007000000000000007A /* NoteAnswerButtonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000007000000000000007B /* NoteAnswerButtonsView.swift */; };
 		AA000008000000000000008A /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000008000000000000008B /* GameState.swift */; };
 		AA000009000000000000009A /* FretTrainerEZTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000009000000000000009B /* FretTrainerEZTests.swift */; };
+		BB000001000000000000001A /* ChordLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000001B /* ChordLibrary.swift */; };
+		BB000002000000000000002A /* MusicTheory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002000000000000002B /* MusicTheory.swift */; };
+		BB000003000000000000003A /* DrawerMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000003000000000000003B /* DrawerMenuView.swift */; };
+		BB000004000000000000004A /* CircleOfFifthsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000004000000000000004B /* CircleOfFifthsView.swift */; };
+		BB000005000000000000005A /* ChordChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000005000000000000005B /* ChordChartsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +33,11 @@
 		AA000007000000000000007B /* NoteAnswerButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAnswerButtonsView.swift; sourceTree = "<group>"; };
 		AA000008000000000000008B /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
 		AA000009000000000000009B /* FretTrainerEZTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FretTrainerEZTests.swift; sourceTree = "<group>"; };
+		BB000001000000000000001B /* ChordLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordLibrary.swift; sourceTree = "<group>"; };
+		BB000002000000000000002B /* MusicTheory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicTheory.swift; sourceTree = "<group>"; };
+		BB000003000000000000003B /* DrawerMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawerMenuView.swift; sourceTree = "<group>"; };
+		BB000004000000000000004B /* CircleOfFifthsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleOfFifthsView.swift; sourceTree = "<group>"; };
+		BB000005000000000000005B /* ChordChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordChartsView.swift; sourceTree = "<group>"; };
 		AA00000A0000000000000010 /* FretTrainerEZ.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FretTrainerEZ.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA00000B0000000000000010 /* FretTrainerEZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FretTrainerEZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -51,6 +61,8 @@
 				AA000003000000000000003B /* Note.swift */,
 				AA000004000000000000004B /* GuitarTuning.swift */,
 				AA000005000000000000005B /* Fretboard.swift */,
+				BB000001000000000000001B /* ChordLibrary.swift */,
+				BB000002000000000000002B /* MusicTheory.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -60,6 +72,9 @@
 			children = (
 				AA000006000000000000006B /* FretboardView.swift */,
 				AA000007000000000000007B /* NoteAnswerButtonsView.swift */,
+				BB000003000000000000003B /* DrawerMenuView.swift */,
+				BB000004000000000000004B /* CircleOfFifthsView.swift */,
+				BB000005000000000000005B /* ChordChartsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -196,6 +211,11 @@
 				AA000006000000000000006A /* FretboardView.swift in Sources */,
 				AA000007000000000000007A /* NoteAnswerButtonsView.swift in Sources */,
 				AA000008000000000000008A /* GameState.swift in Sources */,
+				BB000001000000000000001A /* ChordLibrary.swift in Sources */,
+				BB000002000000000000002A /* MusicTheory.swift in Sources */,
+				BB000003000000000000003A /* DrawerMenuView.swift in Sources */,
+				BB000004000000000000004A /* CircleOfFifthsView.swift in Sources */,
+				BB000005000000000000005A /* ChordChartsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

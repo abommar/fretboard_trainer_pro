@@ -140,6 +140,7 @@ struct FretboardView: View {
                     .fill(highlightColor.opacity(0.3))
                     .frame(width: 36, height: 36)
                     .blur(radius: 8)
+                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: highlightColor)
                 Circle()
                     .fill(highlightColor)
                     .frame(width: 22, height: 22)
@@ -147,9 +148,10 @@ struct FretboardView: View {
                         Circle()
                             .stroke(Color.white.opacity(0.7), lineWidth: 2)
                     )
+                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: highlightColor)
             }
             .offset(x: x - 11, y: y - 11)
-            .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: highlightColor)
+            .id("\(s)-\(f)")
         }
     }
 
