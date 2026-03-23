@@ -31,6 +31,16 @@
 		GG000001000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = GG000001000000000000001B /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		AA00001F000000000000FF10 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA00001D000000000000FF10 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA000013000000000000FF10;
+			remoteInfo = FretTrainerEZ;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		AA000001000000000000001B /* FretTrainerEZApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FretTrainerEZApp.swift; sourceTree = "<group>"; };
 		AA000002000000000000002B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -41,6 +51,8 @@
 		AA000007000000000000007B /* NoteAnswerButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAnswerButtonsView.swift; sourceTree = "<group>"; };
 		AA000008000000000000008B /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
 		AA000009000000000000009B /* FretTrainerEZTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FretTrainerEZTests.swift; sourceTree = "<group>"; };
+		AA00000A0000000000000010 /* FretTrainerEZ.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FretTrainerEZ.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA00000B0000000000000010 /* FretTrainerEZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FretTrainerEZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB000001000000000000001B /* ChordLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordLibrary.swift; sourceTree = "<group>"; };
 		BB000002000000000000002B /* MusicTheory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicTheory.swift; sourceTree = "<group>"; };
 		BB000003000000000000003B /* DrawerMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawerMenuView.swift; sourceTree = "<group>"; };
@@ -54,9 +66,24 @@
 		EE000001000000000000001B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		FF000001000000000000001B /* NoteAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAudioEngine.swift; sourceTree = "<group>"; };
 		GG000001000000000000001B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA00000A0000000000000010 /* FretTrainerEZ.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FretTrainerEZ.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA00000B0000000000000010 /* FretTrainerEZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FretTrainerEZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AA000016000000000000FF10 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA00001B000000000000FF10 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		AA00000C0000000000000010 /* FretTrainerEZ */ = {
@@ -128,7 +155,7 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		AA000012000000000000FF10 /* root */ = {
+		AA000012000000000000FF10 = {
 			isa = PBXGroup;
 			children = (
 				AA00000C0000000000000010 /* FretTrainerEZ */,
@@ -261,23 +288,6 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		AA000016000000000000FF10 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AA00001B000000000000FF10 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
 /* Begin PBXTargetDependency section */
 		AA00001C000000000000FF10 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -285,16 +295,6 @@
 			targetProxy = AA00001F000000000000FF10 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin PBXContainerItemProxy section */
-		AA00001F000000000000FF10 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AA00001D000000000000FF10 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AA000013000000000000FF10;
-			remoteInfo = FretTrainerEZ;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		AA000020000000000000FF10 /* Debug */ = {
@@ -424,8 +424,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = XCT9NV6F8L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = FretTrainerEZ;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The tuner listens to your guitar to detect pitch.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -437,8 +440,12 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.frettrainerez.app";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dontfretaboutitai.frettrainerez;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -453,8 +460,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = XCT9NV6F8L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = FretTrainerEZ;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The tuner listens to your guitar to detect pitch.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -466,8 +476,12 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.frettrainerez.app";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dontfretaboutitai.frettrainerez;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -483,7 +497,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.frettrainerez.app.tests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dontfretaboutitai.frettrainerez;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = "com.dontfretaboutitai.frettrainerez--explicit--com.dontfretaboutitai.frettrainerez--explicit--";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.9;
@@ -501,7 +516,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.frettrainerez.app.tests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dontfretaboutitai.frettrainerez;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = "com.dontfretaboutitai.frettrainerez--explicit--com.dontfretaboutitai.frettrainerez--explicit--";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.9;
@@ -513,15 +529,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AA00001E000000000000FF10 /* Build configuration list for PBXProject "FretTrainerEZ" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				AA000020000000000000FF10 /* Debug */,
-				AA000021000000000000FF10 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		AA000014000000000000FF10 /* Build configuration list for PBXNativeTarget "FretTrainerEZ" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -540,8 +547,16 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		AA00001E000000000000FF10 /* Build configuration list for PBXProject "FretTrainerEZ" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA000020000000000000FF10 /* Debug */,
+				AA000021000000000000FF10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = AA00001D000000000000FF10 /* Project object */;
 }
