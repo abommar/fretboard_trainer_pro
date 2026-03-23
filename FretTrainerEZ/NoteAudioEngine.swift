@@ -19,6 +19,7 @@ final class NoteAudioEngine {
     /// Play the note at the given string/fret position.
     func play(string: Int, fret: Int) {
         guard string >= 0 && string < openStringMidi.count else { return }
+        ensureRunning()
         let midi      = openStringMidi[string] + fret
         let frequency = Float(440.0 * pow(2.0, Double(midi - 69) / 12.0))
         guard let buffer = makeKSBuffer(frequency: frequency) else { return }
@@ -30,13 +31,19 @@ final class NoteAudioEngine {
     // MARK: - Setup
 
     private func setupEngine() {
-        // Mix with background audio (don't silence music player)
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
-        try? AVAudioSession.sharedInstance().setActive(true)
-
+        // Build the graph but don't start yet — engine starts lazily on first play()
+        // so it doesn't conflict with the chromatic tuner's .record session.
         engine.attach(playerNode)
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
         engine.mainMixerNode.outputVolume = 0.7
+    }
+
+    /// Ensures the audio session is set to .ambient and the engine is running.
+    /// Called before every play() so we recover cleanly after the tuner stops.
+    private func ensureRunning() {
+        if engine.isRunning { return }
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        try? AVAudioSession.sharedInstance().setActive(true)
         try? engine.start()
     }
 
