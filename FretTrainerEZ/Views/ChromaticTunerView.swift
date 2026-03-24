@@ -16,9 +16,11 @@ struct PitchDetector {
     static func detectPitch(samples: [Float], sampleRate: Float) -> Float? {
         let n = samples.count
 
-        // Gate on RMS level — ignore silence
+        // Gate on RMS level — ignore silence.
+        // 0.004 is low enough to catch an acoustic or unplugged electric
+        // yet still reject true silence / handling noise.
         let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(n))
-        guard rms > 0.02 else { return nil }
+        guard rms > 0.004 else { return nil }
 
         // Apply Hann window
         var windowed = [Float](repeating: 0, count: n)
@@ -110,14 +112,19 @@ final class TunerEngine {
 
     @ObservationIgnored private var audioEngine = AVAudioEngine()
 
-    // Stability: note must appear this many consecutive frames before display updates
-    @ObservationIgnored private let confirmationFrames = 3
+    // Stability: note must appear this many consecutive frames before display updates.
+    // 2 frames (~180ms at 4096/44100) balances stability with responsiveness for guitar.
+    @ObservationIgnored private let confirmationFrames = 2
     @ObservationIgnored private var pendingNote: String = ""
     @ObservationIgnored private var pendingCount: Int = 0
 
-    // Smoothing: exponential moving average on cents (α = 0.25 → slow/stable needle)
-    @ObservationIgnored private let centsAlpha: Float = 0.25
+    // Smoothing: exponential moving average on cents (α = 0.35 → slightly faster needle)
+    @ObservationIgnored private let centsAlpha: Float = 0.35
     @ObservationIgnored private var smoothedCents: Float = 0
+
+    // Hold: keep the last detected note on screen for a short window after signal drops,
+    // so a decaying guitar note doesn't immediately blank out.
+    @ObservationIgnored private var holdWorkItem: DispatchWorkItem?
 
     func start() {
         let session = AVAudioSession.sharedInstance()
@@ -149,6 +156,8 @@ final class TunerEngine {
                     }
 
                     if self.pendingCount >= self.confirmationFrames {
+                        self.holdWorkItem?.cancel()
+                        self.holdWorkItem = nil
                         self.detectedNote = info.note
                         self.frequency = freq
                     }
@@ -168,10 +177,17 @@ final class TunerEngine {
                 DispatchQueue.main.async {
                     self.pendingNote = ""
                     self.pendingCount = 0
-                    self.detectedNote = "--"
-                    self.frequency = 0
-                    self.centsOff = 0
-                    self.smoothedCents = 0
+                    // Don't blank immediately — hold the last note for 0.8s so a
+                    // decaying acoustic/electric note doesn't flicker out.
+                    self.holdWorkItem?.cancel()
+                    let work = DispatchWorkItem {
+                        self.detectedNote = "--"
+                        self.frequency = 0
+                        self.centsOff = 0
+                        self.smoothedCents = 0
+                    }
+                    self.holdWorkItem = work
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
                 }
             }
         }
@@ -184,6 +200,8 @@ final class TunerEngine {
 
     func stop() {
         guard isListening else { return }
+        holdWorkItem?.cancel()
+        holdWorkItem = nil
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         isListening = false
