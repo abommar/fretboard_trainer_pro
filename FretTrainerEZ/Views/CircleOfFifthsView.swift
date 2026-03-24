@@ -117,16 +117,20 @@ struct CircleOfFifthsView: View {
     private func circleCanvas(maxSize: CGFloat) -> some View {
         GeometryReader { geo in
             let size = min(geo.size.width, maxSize)
-            let center = CGPoint(x: size / 2, y: size / 2)
+            // Drawing center: local to the size×size canvas
+            let drawCenter = CGPoint(x: size / 2, y: size / 2)
+            // Tap center: in the full-width container frame (the expanded .frame(maxWidth:.infinity))
+            // The circle is horizontally centered in geo.size.width, so offset by (geo.size.width - size)/2
+            let tapCenter = CGPoint(x: geo.size.width / 2, y: size / 2)
             ZStack {
-                drawWedges(size: size, center: center)
-                drawLabels(size: size, center: center)
+                drawWedges(size: size, center: drawCenter)
+                drawLabels(size: size, center: drawCenter)
             }
             .frame(width: size, height: size)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
             .onTapGesture { location in
-                handleTap(at: location, size: size, center: center)
+                handleTap(at: location, size: size, center: tapCenter)
             }
         }
         .frame(height: maxSize)
