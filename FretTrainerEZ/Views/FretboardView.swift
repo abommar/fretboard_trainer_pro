@@ -181,7 +181,7 @@ struct FretboardView: View {
                 .fill(color)
                 .frame(width: 20, height: 20)
                 .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 1.5))
-                .offset(x: x - 10, y: y - 10)
+                .position(x: x, y: y)
         }
     }
 
@@ -204,7 +204,7 @@ struct FretboardView: View {
                         .frame(width: pillW, height: pillH)
                         .background(Capsule().fill(noteColor(for: note)))
                         .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.5))
-                        .offset(x: x - pillW / 2, y: y - pillH / 2)
+                        .position(x: x, y: y)
                 )
             }
         }
@@ -232,7 +232,7 @@ struct FretboardView: View {
                 .fill(Color.green)
                 .frame(width: 22, height: 22)
                 .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 2))
-                .offset(x: x - 11, y: y - 11)
+                .position(x: x, y: y)
                 .transition(.scale.combined(with: .opacity))
         }
     }
@@ -258,9 +258,9 @@ struct FretboardView: View {
                     )
                     .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: highlightColor)
             }
-            // The ZStack is 36×36 (sized by the glow circle), so use half of 36
-            // to center it on the string, not half of the inner 22pt dot.
-            .offset(x: x - 18, y: y - 18)
+            // .position() places the CENTER of the view at (x, y) regardless of view size.
+            // This is unambiguous unlike .offset() which depends on knowing the view's frame size.
+            .position(x: x, y: y)
             .id("\(s)-\(f)")
         }
     }
