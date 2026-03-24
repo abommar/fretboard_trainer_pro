@@ -258,7 +258,9 @@ struct FretboardView: View {
                     )
                     .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: highlightColor)
             }
-            .offset(x: x - 11, y: y - 11)
+            // The ZStack is 36×36 (sized by the glow circle), so use half of 36
+            // to center it on the string, not half of the inner 22pt dot.
+            .offset(x: x - 18, y: y - 18)
             .id("\(s)-\(f)")
         }
     }
