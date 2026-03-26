@@ -60,7 +60,7 @@ private struct NoteButton: View {
             return Color(hex: "#2A2A4A")
         case .wrong(let tapped, let correct):
             if note == tapped { return .red }
-            if note == correct { return Color(hex: "#2A2A4A") }
+            if note == correct { return .green }
             return Color(hex: "#2A2A4A")
         }
     }

@@ -10,6 +10,8 @@ struct ContentView: View {
     @AppStorage("fretboardStyle") private var fretboardStyleRaw: String = FretboardStyle.rosewood.rawValue
     @AppStorage("useFlats") private var useFlats: Bool = false
     @AppStorage("soundEnabled") private var soundEnabled: Bool = false
+    @AppStorage("tipsEnabled")  private var tipsEnabled: Bool  = true
+    @State private var memoryFlashProgress: CGFloat = 1.0
 
     private let fretboard = Fretboard()
 
@@ -18,6 +20,27 @@ struct ContentView: View {
     }
 
     private let accent = Color(hex: "#E94560")
+
+    private let fretboardTips: [String] = [
+        "E→F and B→C are always 1 fret apart — no sharp between them.",
+        "Fret 12 is the same note as the open string, one octave higher.",
+        "Open strings low→high: E · A · D · G · B · E",
+        "Strings 1 and 6 are both E — same notes at every fret.",
+        "There are only 12 notes — the pattern repeats every 12 frets.",
+        "5th fret of any string matches the next open string above it.",
+        "Exception: fret 4 on the G string = open B (B string tunes a 3rd, not a 4th).",
+        "Octave shape: same note lives 2 strings up and 2 frets right. Add 1 extra fret when crossing the B string.",
+        "Frets 0–5 on the low E: E · F · F# · G · G# · A",
+        "Fret 5 on strings 6–4: A · D · G — the same as the open strings just above them.",
+        "Fret 7 on the low E = B. Same pitch as the open B string.",
+        "Natural notes in order: A B C D E F G — only half-steps are E→F and B→C.",
+        "A# and Bb are the same pitch — two names for one fret.",
+        "C is always 1 fret above B. F is always 1 fret above E.",
+        "The notes on fret 3: G · C · F · A# · D · G (low E to high E).",
+        "Memorise frets 3 and 5 as anchors — together they cover all 7 natural notes.",
+        "Every note appears on every string within the first 12 frets.",
+        "The CAGED system: chord shapes C · A · G · E · D repeat up the neck as movable shapes.",
+    ]
     private let bg     = Color(hex: "#1A1A2E")
     private let cardBg = Color(hex: "#16213E")
 
@@ -25,8 +48,7 @@ struct ContentView: View {
         switch gameState.gameMode {
         case .nameTheNote:
             return gameState.currentString
-        case .findTheFret:
-            // Only show the transient red dot for wrong taps; correct ones stay in foundPositions
+        case .findTheFret, .memoryChallenge:
             if case .wrong(let s, _) = gameState.fretAnswerState { return s }
             return nil
         }
@@ -36,7 +58,7 @@ struct ContentView: View {
         switch gameState.gameMode {
         case .nameTheNote:
             return gameState.currentFret
-        case .findTheFret:
+        case .findTheFret, .memoryChallenge:
             if case .wrong(_, let f) = gameState.fretAnswerState { return f }
             return nil
         }
@@ -50,8 +72,22 @@ struct ContentView: View {
             case .correct: return .green
             case .wrong:   return .red
             }
-        case .findTheFret:
-            return .red  // only wrong taps get the transient dot
+        case .findTheFret, .memoryChallenge:
+            return .red
+        }
+    }
+
+    /// Gold highlights during flash, red for missed positions during complete.
+    private var memoryScaleHighlights: [(FretPosition, Color)] {
+        guard gameState.gameMode == .memoryChallenge else { return [] }
+        switch gameState.memoryPhase {
+        case .flashing:
+            return gameState.required.map { ($0, Color(hex: "#FFD700")) }
+        case .recalling:
+            return []
+        case .complete:
+            let missed = gameState.required.subtracting(gameState.foundFrets)
+            return missed.map { ($0, Color.red.opacity(0.85)) }
         }
     }
 
@@ -60,7 +96,7 @@ struct ContentView: View {
             let compact = geo.size.height < 500
             let hPad: CGFloat    = compact ? 4 : 8
             let btnH: CGFloat    = compact ? 34 : 44
-            let fbH: CGFloat     = fretboardHeight(geo, compact: compact, btnH: btnH)
+            let fbH: CGFloat     = fretboardFrameHeight(geo, compact: compact, btnH: btnH)
 
             VStack(spacing: 0) {
                 headerRow
@@ -81,16 +117,25 @@ struct ContentView: View {
                     highlightString: isStudyMode ? nil : activeHighlightString,
                     highlightFret: isStudyMode ? nil : activeHighlightFret,
                     highlightColor: highlightColor,
-                    foundPositions: !isStudyMode && gameState.gameMode == .findTheFret
+                    foundPositions: !isStudyMode && (gameState.gameMode == .findTheFret || gameState.gameMode == .memoryChallenge)
                         ? Array(gameState.foundFrets)
                         : [],
                     showNoteLabels: isStudyMode,
                     studyFilterNote: studyHighlightNote,
+                    scaleHighlights: isStudyMode ? [] : memoryScaleHighlights,
                     style: fretboardStyle,
-                    onFretTap: (isStudyMode || gameState.gameMode == .findTheFret)
+                    difficultyBoundaryFret: (!isStudyMode && gameState.difficulty != .advanced)
+                        ? gameState.difficulty.maxFret : nil,
+                    onFretTap: (isStudyMode || gameState.gameMode == .findTheFret ||
+                                gameState.gameMode == .memoryChallenge)
                         ? { s, f in
                             if isStudyMode {
                                 if soundEnabled { audioEngine.play(string: s, fret: f) }
+                            } else if gameState.gameMode == .memoryChallenge {
+                                if soundEnabled && fretboard.note(string: s, fret: f) == gameState.correctNote {
+                                    audioEngine.play(string: s, fret: f)
+                                }
+                                gameState.submitMemoryTap(string: s, fret: f)
                             } else {
                                 if soundEnabled && fretboard.note(string: s, fret: f) == gameState.correctNote {
                                     audioEngine.play(string: s, fret: f)
@@ -100,14 +145,18 @@ struct ContentView: View {
                         }
                         : nil
                 )
-                .frame(height: fbH)
+                .frame(height: fbH, alignment: .top)
                 .clipped()
+                .transaction { $0.animation = nil }
 
                 Divider()
                     .background(Color.white.opacity(0.1))
                     .padding(.vertical, compact ? 3 : 5)
 
                 promptText
+                    .frame(height: 20)
+                    .clipped()
+                    .transaction { $0.animation = nil }
                     .padding(.bottom, compact ? 3 : 5)
 
                 if gameState.gameMode == .nameTheNote {
@@ -119,8 +168,17 @@ struct ContentView: View {
                         } : nil,
                         studySelectedNote: studyHighlightNote
                     )
+                } else if gameState.gameMode == .findTheFret {
+                    findTheFretPrompt(btnH: btnH, compact: compact)
                 } else {
-                    findTheFretPrompt(btnH: btnH)
+                    memoryPrompt(btnH: btnH, compact: compact)
+                }
+
+                if !compact && !isStudyMode && tipsEnabled && gameState.gameMode != .memoryChallenge {
+                    tipView
+                        .padding(.top, 8)
+                        .padding(.horizontal, 16)
+                        .transition(.opacity)
                 }
 
                 Spacer(minLength: 0)
@@ -134,10 +192,18 @@ struct ContentView: View {
                 activeScreen = screen
             }
         }
+        .sheet(isPresented: Binding(
+            get: { gameState.showTimedResult },
+            set: { if !$0 { gameState.showTimedResult = false } }
+        )) {
+            TimedResultView(gameState: gameState) {
+                gameState.showTimedResult = false
+            }
+        }
         .fullScreenCover(item: $activeScreen) { screen in
             switch screen {
             case .circleOfFifths:  CircleOfFifthsView()
-            case .chordCharts:     ChordChartsView()
+            case .chordCharts:     ChordChartsView(audioEngine: audioEngine)
             case .chromaticTuner:  ChromaticTunerView()
             case .scales:          ScalesView()
             case .fretboardStyle:
@@ -153,19 +219,32 @@ struct ContentView: View {
             if soundEnabled && !isStudyMode && gameState.gameMode == .nameTheNote {
                 audioEngine.play(string: gameState.currentString, fret: gameState.currentFret)
             }
+            if gameState.gameMode == .memoryChallenge {
+                memoryFlashProgress = 1.0
+                withAnimation(.linear(duration: gameState.flashDuration)) {
+                    memoryFlashProgress = 0.0
+                }
+            }
         }
         .preferredColorScheme(.dark)
     }
 
-    private func fretboardHeight(_ geo: GeometryProxy, compact: Bool, btnH: CGFloat) -> CGFloat {
-        let headerH:   CGFloat = compact ? 38  : 48
-        let gameModeH: CGFloat = compact ? 34  : 40
-        let controlH:  CGFloat = compact ? 44  : 54
-        let dividerH:  CGFloat = compact ? 8   : 12
-        let promptH:   CGFloat = compact ? 18  : 24
-        let buttonsH:  CGFloat = btnH * 2 + 8  // 2 rows + spacing
+    // FretboardView internal content height is exactly fretboardHeight(164) + 20 = 184pt.
+    // The frame must never exceed 184pt or SwiftUI will center the content and cause layout jitter.
+    private let fretboardContentHeight: CGFloat = 184
+
+    private func fretboardFrameHeight(_ geo: GeometryProxy, compact: Bool, btnH: CGFloat) -> CGFloat {
+        if compact {
+            return fretboardContentHeight   // lock to content height; no centering offset
+        }
+        let headerH:   CGFloat = 48
+        let gameModeH: CGFloat = 40
+        let controlH:  CGFloat = 54
+        let dividerH:  CGFloat = 12
+        let promptH:   CGFloat = 24
+        let buttonsH:  CGFloat = btnH * 2 + 8
         let fixed = headerH + gameModeH + controlH + dividerH + promptH + buttonsH
-        return min(max(geo.size.height - fixed, 120), 200)
+        return min(max(geo.size.height - fixed, 120), fretboardContentHeight)
     }
 
     // MARK: - Header
@@ -246,7 +325,7 @@ struct ContentView: View {
             set: { gameState.setGameMode($0); studyHighlightNote = nil }
         )) {
             ForEach(GameMode.allCases, id: \.self) { mode in
-                Text(mode.rawValue).tag(mode)
+                Text(mode.shortName).tag(mode)
             }
         }
         .pickerStyle(.segmented)
@@ -255,15 +334,15 @@ struct ContentView: View {
 
     // MARK: - Find The Fret Prompt
 
-    private func findTheFretPrompt(btnH: CGFloat) -> some View {
+    private func findTheFretPrompt(btnH: CGFloat, compact: Bool = false) -> some View {
         let cardBg = Color(hex: "#16213E")
         return ZStack {
             RoundedRectangle(cornerRadius: 12).fill(cardBg)
             HStack {
                 Spacer()
-                VStack(spacing: 4) {
+                VStack(spacing: 2) {
                     Text(useFlats ? gameState.correctNote.flatName : gameState.correctNote.sharpName)
-                        .font(.system(size: btnH * 1.4, weight: .heavy, design: .rounded))
+                        .font(.system(size: compact ? 20 : btnH * 1.4, weight: .heavy, design: .rounded))
                         .foregroundColor(findTheFretNoteColor)
                         .animation(.easeInOut(duration: 0.15), value: gameState.fretAnswerState)
                     Text(findTheFretFeedback)
@@ -285,8 +364,88 @@ struct ContentView: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(height: btnH * 2 + 8)
+        .frame(height: compact ? 50 : (btnH * 2 + 8))
         .padding(.horizontal, 12)
+    }
+
+    // MARK: - Memory Challenge Prompt
+
+    private func memoryPrompt(btnH: CGFloat, compact: Bool = false) -> some View {
+        let noteName = useFlats ? gameState.correctNote.flatName : gameState.correctNote.sharpName
+        let cardBg   = Color(hex: "#16213E")
+        let gold     = Color(hex: "#FFD700")
+
+        return ZStack {
+            RoundedRectangle(cornerRadius: 12).fill(cardBg)
+
+            VStack(spacing: 2) {
+                // Note name — shown in all phases
+                Text(noteName)
+                    .font(.system(size: compact ? 20 : btnH * 1.4, weight: .heavy, design: .rounded))
+                    .foregroundColor(gameState.memoryPhase == .flashing ? gold : .white)
+                    .animation(.easeInOut(duration: 0.3), value: gameState.memoryPhase)
+
+                // Flash progress bar (only during flash phase)
+                if gameState.memoryPhase == .flashing {
+                    GeometryReader { barGeo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.white.opacity(0.12))
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(gold)
+                                .frame(width: barGeo.size.width * memoryFlashProgress)
+                        }
+                    }
+                    .frame(height: 5)
+                    .padding(.horizontal, 24)
+                } else {
+                    // Recall status
+                    let found     = gameState.foundFrets.count
+                    let total     = gameState.required.count
+                    let remaining = total - found
+                    Text(gameState.memoryPhase == .complete ? "Found all \(total)!" :
+                         found == 0 ? "find all \(total) position\(total == 1 ? "" : "s")" :
+                         "\(remaining) remaining")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(gameState.memoryPhase == .complete ? .green : .white.opacity(0.6))
+                        .animation(.easeInOut(duration: 0.15), value: gameState.memoryPhase)
+                }
+            }
+            .padding(.vertical, compact ? 4 : 8)
+        }
+        .frame(height: compact ? 50 : (btnH * 2 + 8))
+        .padding(.horizontal, 12)
+    }
+
+    // MARK: - Tip of the question
+
+    private var tipView: some View {
+        let idx = abs(gameState.questionID.hashValue) % fretboardTips.count
+        let tip = fretboardTips[idx]
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "lightbulb.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Color(hex: "#FFD700"))
+                .padding(.top, 2)
+            Text(tip)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(.white.opacity(0.85))
+                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(3)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(hex: "#16213E"))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(hex: "#FFD700").opacity(0.25), lineWidth: 1)
+                )
+        )
+        .id(gameState.questionID)
+        .animation(.easeInOut(duration: 0.3), value: gameState.questionID)
     }
 
     private var findTheFretNoteColor: Color {
@@ -299,7 +458,21 @@ struct ContentView: View {
 
     private var findTheFretFeedback: String {
         switch gameState.fretAnswerState {
-        case .idle:    return "tap it on the fretboard"
+        case .idle:
+            let total = gameState.required.count
+            let found = gameState.foundFrets.count
+            if found == 0 {
+                let rangeNote: String
+                switch gameState.difficulty {
+                case .beginner:     rangeNote = " · frets 0–5"
+                case .intermediate: rangeNote = " · frets 0–10"
+                case .advanced:     rangeNote = ""
+                }
+                return "find all \(total) position\(total == 1 ? "" : "s")\(rangeNote)"
+            } else {
+                let remaining = total - found
+                return "\(remaining) remaining"
+            }
         case .correct: return "correct!"
         case .wrong:   return "wrong — keep looking"
         }
@@ -309,18 +482,19 @@ struct ContentView: View {
 
     private var controlRow: some View {
         HStack(spacing: 10) {
-            // Left: Practice / Timed toggle — fixed width
-            Picker("", selection: modeBinding) {
-                Text("Practice").tag(false)
-                Text("Timed").tag(true)
+            if gameState.gameMode != .memoryChallenge {
+                // Practice / Timed toggle — not shown in memory mode
+                Picker("", selection: modeBinding) {
+                    Text("Practice").tag(false)
+                    Text("Timed").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 130)
+                .tint(accent)
             }
-            .pickerStyle(.segmented)
-            .frame(width: 130)
-            .tint(accent)
 
-            // Right: changes based on mode + timer state
             Group {
-                if !gameState.isTimedMode {
+                if gameState.gameMode == .memoryChallenge || !gameState.isTimedMode {
                     difficultySlider
                 } else if gameState.isTimerActive {
                     timerActiveCompact
@@ -335,6 +509,7 @@ struct ContentView: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(cardBg))
         .animation(.easeInOut(duration: 0.15), value: gameState.isTimedMode)
         .animation(.easeInOut(duration: 0.15), value: gameState.isTimerActive)
+        .animation(.easeInOut(duration: 0.15), value: gameState.gameMode)
     }
 
     private var modeBinding: Binding<Bool> {
@@ -452,10 +627,26 @@ struct ContentView: View {
             Text("What note is highlighted?")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
-        } else {
+        } else if gameState.gameMode == .findTheFret {
             Text("Tap every \(useFlats ? gameState.correctNote.flatName : gameState.correctNote.sharpName) on the fretboard")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
+        } else {
+            // Memory mode
+            switch gameState.memoryPhase {
+            case .flashing:
+                Text("Memorize the positions!")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(hex: "#FFD700").opacity(0.9))
+            case .recalling:
+                Text("Tap all positions from memory")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+            case .complete:
+                Text("Round complete!")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.green)
+            }
         }
     }
 

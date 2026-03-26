@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
     @AppStorage("soundEnabled")   private var soundEnabled: Bool   = false
     @AppStorage("useFlats")       private var useFlats: Bool       = false
+    @AppStorage("tipsEnabled")    private var tipsEnabled: Bool    = true
 
     private let accent = Color(hex: "#E94560")
     private let bg     = Color(hex: "#1A1A2E")
@@ -47,6 +48,15 @@ struct SettingsView: View {
                                 title: "Haptics",
                                 subtitle: "Vibration feedback on answers",
                                 value: $hapticsEnabled
+                            )
+                            Divider()
+                                .background(Color.white.opacity(0.08))
+                                .padding(.leading, 52)
+                            toggleRow(
+                                icon: "lightbulb",
+                                title: "Fretboard Tips",
+                                subtitle: "Show learning tips below the answer buttons",
+                                value: $tipsEnabled
                             )
                         }
 

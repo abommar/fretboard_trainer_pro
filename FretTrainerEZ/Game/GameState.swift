@@ -3,8 +3,23 @@ import CoreHaptics
 import Observation
 
 enum GameMode: String, CaseIterable {
-    case nameTheNote = "Name That Note"
-    case findTheFret = "Find The Fret"
+    case nameTheNote     = "Name That Note"
+    case findTheFret     = "Find The Fret"
+    case memoryChallenge = "Memory Challenge"
+
+    var shortName: String {
+        switch self {
+        case .nameTheNote:     return "Name It"
+        case .findTheFret:     return "Find It"
+        case .memoryChallenge: return "Memory"
+        }
+    }
+}
+
+enum MemoryPhase: Equatable {
+    case flashing    // all positions shown on board
+    case recalling   // board cleared — user taps from memory
+    case complete    // brief pause revealing missed spots before next round
 }
 
 struct FretPosition: Hashable {
@@ -50,6 +65,17 @@ final class GameState {
         return Int(Double(correctCount) / Double(totalCount) * 100)
     }
 
+    // Streak
+    var currentStreak: Int = 0
+    var bestStreakThisSession: Int = 0
+    var bestStreak: Int {
+        get { UserDefaults.standard.integer(forKey: bestStreakKey) }
+    }
+    private var bestStreakKey: String { "bestStreak_\(gameMode.rawValue)" }
+
+    // Timed session result
+    var showTimedResult: Bool = false
+
     // Answer feedback
     enum AnswerState: Equatable {
         case idle
@@ -65,8 +91,27 @@ final class GameState {
     }
     var fretAnswerState: FretAnswerState = .idle
 
-    // Find The Fret: positions the user has already tapped correctly this round
+    // Find The Fret / Memory: positions the user has already tapped correctly this round
     var foundFrets: Set<FretPosition> = []
+
+    // Memory Challenge
+    var memoryPhase: MemoryPhase = .flashing
+    private var memoryFlashTimer: Timer?
+
+    var flashDuration: Double {
+        switch difficulty {
+        case .beginner:     return 4.0
+        case .intermediate: return 2.5
+        case .advanced:     return 1.5
+        }
+    }
+
+    /// All valid positions for the current note within the active difficulty range.
+    var required: Set<FretPosition> {
+        Set(fretboard.allPositions(for: correctNote)
+            .filter { $0.fret <= difficulty.maxFret }
+            .map { FretPosition(string: $0.string, fret: $0.fret) })
+    }
 
     // Best score persistence
     var isNewBest: Bool = false
@@ -95,19 +140,35 @@ final class GameState {
     }
 
     func nextQuestion() {
-        answerState = .idle
+        answerState    = .idle
         fretAnswerState = .idle
-        foundFrets = []
-        questionID = UUID()
-        if gameMode == .nameTheNote {
+        foundFrets     = []
+        questionID     = UUID()
+        switch gameMode {
+        case .nameTheNote:
             currentString = Int.random(in: 0..<fretboard.tuning.stringCount)
             currentFret   = Int.random(in: 0...difficulty.maxFret)
             correctNote   = fretboard.note(string: currentString, fret: currentFret)
-        } else {
-            // Pick a random note; position is unknown — user must find it
+        case .findTheFret:
             correctNote   = Note.allCases.randomElement()!
             currentString = 0
             currentFret   = 0
+        case .memoryChallenge:
+            let otherNotes = Note.allCases.filter { $0 != correctNote }
+            correctNote   = otherNotes.randomElement() ?? correctNote
+            currentString = 0
+            currentFret   = 0
+            scheduleMemoryFlash()
+        }
+    }
+
+    private func scheduleMemoryFlash() {
+        memoryPhase = .flashing
+        memoryFlashTimer?.invalidate()
+        memoryFlashTimer = Timer.scheduledTimer(withTimeInterval: flashDuration, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            self.memoryPhase    = .recalling
+            self.memoryFlashTimer = nil
         }
     }
 
@@ -126,6 +187,8 @@ final class GameState {
         let wrongDelay: Double   = isTimedMode ? 0.7 : 1.5
         if answer == correctNote {
             correctCount += 1
+            currentStreak += 1
+            if currentStreak > bestStreakThisSession { bestStreakThisSession = currentStreak }
             answerState = .correct(tapped: answer)
             playHaptic(success: true)
             DispatchQueue.main.asyncAfter(deadline: .now() + correctDelay) { [weak self] in
@@ -133,6 +196,7 @@ final class GameState {
                 self.nextQuestion()
             }
         } else {
+            currentStreak = 0
             answerState = .wrong(tapped: answer, correct: correctNote)
             playHaptic(success: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + wrongDelay) { [weak self] in
@@ -153,14 +217,11 @@ final class GameState {
             playHaptic(success: true)
 
             // Advance when all required positions (within difficulty range) are found
-            let required = Set(
-                fretboard.allPositions(for: correctNote)
-                    .filter { $0.fret <= difficulty.maxFret }
-                    .map { FretPosition(string: $0.string, fret: $0.fret) }
-            )
             if required.isSubset(of: foundFrets) {
                 correctCount += 1
                 totalCount += 1
+                currentStreak += 1
+                if currentStreak > bestStreakThisSession { bestStreakThisSession = currentStreak }
                 fretAnswerState = .correct(string: string, fret: fret) // blocks further taps
                 DispatchQueue.main.asyncAfter(deadline: .now() + (isTimedMode ? 0.5 : 0.8)) { [weak self] in
                     guard let self, !self.isTimeUp else { return }
@@ -169,6 +230,40 @@ final class GameState {
             }
         } else {
             totalCount += 1
+            currentStreak = 0
+            fretAnswerState = .wrong(string: string, fret: fret)
+            playHaptic(success: false)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                guard let self else { return }
+                if case .wrong = self.fretAnswerState { self.fretAnswerState = .idle }
+            }
+        }
+    }
+
+    func submitMemoryTap(string: Int, fret: Int) {
+        guard memoryPhase == .recalling else { return }
+        let pos = FretPosition(string: string, fret: fret)
+        guard !foundFrets.contains(pos) else { return }
+        guard case .idle = fretAnswerState else { return }
+
+        if fretboard.note(string: string, fret: fret) == correctNote {
+            foundFrets.insert(pos)
+            totalCount   += 1
+            correctCount += 1
+            currentStreak += 1
+            if currentStreak > bestStreakThisSession { bestStreakThisSession = currentStreak }
+            playHaptic(success: true)
+
+            if required.isSubset(of: foundFrets) {
+                memoryPhase = .complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                    guard let self else { return }
+                    self.nextQuestion()
+                }
+            }
+        } else {
+            totalCount    += 1
+            currentStreak  = 0
             fretAnswerState = .wrong(string: string, fret: fret)
             playHaptic(success: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
@@ -193,12 +288,18 @@ final class GameState {
     }
 
     func reset() {
+        memoryFlashTimer?.invalidate()
+        memoryFlashTimer = nil
+        memoryPhase     = .flashing
         fretAnswerState = .idle
-        foundFrets = []
-        isNewBest = false
+        foundFrets      = []
+        isNewBest       = false
+        showTimedResult = false
+        currentStreak   = 0
+        bestStreakThisSession = 0
         stopTimedGame()
         correctCount = 0
-        totalCount = 0
+        totalCount   = 0
         nextQuestion()
     }
 
@@ -206,6 +307,9 @@ final class GameState {
         correctCount = 0
         totalCount = 0
         isNewBest = false
+        showTimedResult = false
+        currentStreak = 0
+        bestStreakThisSession = 0
         foundFrets = []
         timeRemaining = timerDuration
         isTimeUp = false
@@ -229,9 +333,14 @@ final class GameState {
     }
 
     private func saveTimedScoreIfBetter() {
-        guard correctCount > bestTimedScore else { return }
-        UserDefaults.standard.set(correctCount, forKey: timedScoreKey)
-        isNewBest = true
+        if correctCount > bestTimedScore {
+            UserDefaults.standard.set(correctCount, forKey: timedScoreKey)
+            isNewBest = true
+        }
+        if bestStreakThisSession > bestStreak {
+            UserDefaults.standard.set(bestStreakThisSession, forKey: bestStreakKey)
+        }
+        showTimedResult = true
     }
 
     func stopTimedGame() {

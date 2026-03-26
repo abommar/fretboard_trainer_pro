@@ -3,10 +3,13 @@ import SwiftUI
 struct ChordChartsView: View {
     @Environment(\.dismiss) private var dismiss
 
+    var audioEngine: NoteAudioEngine? = nil
+
     @State private var selectedRoot: Note = .C
     @State private var selectedType: ChordType = .major
 
-    @AppStorage("useFlats") private var useFlats: Bool = false
+    @AppStorage("useFlats")     private var useFlats:     Bool = false
+    @AppStorage("soundEnabled") private var soundEnabled: Bool = false
 
     private let accent  = Color(hex: "#E94560")
     private let bg      = Color(hex: "#1A1A2E")
@@ -163,15 +166,38 @@ struct ChordChartsView: View {
 
                 // Chord name + character as subtitle
                 let rootName = useFlats ? selectedRoot.flatName : selectedRoot.sharpName
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("\(rootName)\(selectedType.suffix)")
-                        .font(.system(size: 20, weight: .heavy, design: .rounded))
-                        .foregroundColor(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(selectedType.mood)
-                        .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.45))
-                        .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("\(rootName)\(selectedType.suffix)")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundColor(.white)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(selectedType.mood)
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.45))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Button {
+                        strumChord()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 10))
+                            Text("Play")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(soundEnabled ? accent : .white.opacity(0.25))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(soundEnabled ? accent.opacity(0.15) : Color.white.opacity(0.05))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!soundEnabled)
+                    .opacity(soundEnabled ? 1.0 : 0.4)
                 }
 
                 Divider().background(Color.white.opacity(0.1))
@@ -230,6 +256,19 @@ struct ChordChartsView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: selectedType)
         .animation(.easeInOut(duration: 0.15), value: selectedRoot)
+    }
+
+    // MARK: - Strum
+
+    private func strumChord() {
+        guard let engine = audioEngine, let voicing = voicings.first else { return }
+        let delay = 0.08
+        for (index, fret) in voicing.frets.enumerated() {
+            guard let f = fret else { continue }
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay * Double(index)) {
+                engine.play(string: index, fret: f)
+            }
+        }
     }
 }
 

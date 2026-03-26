@@ -218,8 +218,42 @@ These items are needed before the first TestFlight build:
 - [ ] **App Store Connect** — create app record, add internal testers (no review needed for internal), or add external testers (requires Beta App Review)
 
 ## Roadmap / What's NOT Built Yet
-- No onboarding flow
-- Phase 5: Extended chord voicings (9th/11th/13th chord types in ChordLibrary)
-- Chord library has all 12 roots × 5 chord types + limited sus2/sus4
+
+### Phase 2 — UX & Engagement (next up, post-TestFlight v1)
+Derived from simulator UX testing session (2026-03-25). Five items in priority order:
+
+**R1 · Onboarding** — `Views/OnboardingView.swift` (new) + `FretTrainerEZApp.swift` (launch gate)
+- 3-screen swipeable intro, shown once via `"hasSeenOnboarding"` `@AppStorage` bool
+- Screen 1: Name That Note explanation. Screen 2: Find The Fret explanation. Screen 3: Study Mode tip.
+- Each screen: Canvas-drawn icon, headline, body, Next/Get Started buttons. Skippable from any screen.
+- No networking, no permissions required.
+
+**R2 · Wrong-answer correction** — `Game/GameState.swift` + `Views/NoteAnswerButtonsView.swift`
+- Add `.wrongReveal(correct: Note)` case to `AnswerState` (or carry correct note in existing `.wrong`)
+- On wrong tap: flash tapped button red AND highlight correct button green during reveal window (0.6 s)
+- Plugs into existing auto-advance timing — no new delay logic needed
+
+**R3 · Position count hint in Find The Fret** — `ContentView.swift`
+- `required: Set<FretPosition>` is already computed in `GameState`
+- Add `Text("Find all \(gameState.required.count) positions")` below note name; update to "N remaining" as frets are found
+- One-line addition to the Find The Fret note display section of ContentView
+
+**R4 · Streak counter + timed session summary** — `Game/GameState.swift` + `Views/TimedResultView.swift` (new)
+- Add `currentStreak: Int` and `bestStreak: Int` to `GameState`; increment on correct, reset on wrong
+- Persist `bestStreak` per mode+duration in `UserDefaults` (same pattern as `best_\(mode)_\(duration)`)
+- After timed game ends, show `TimedResultView` sheet: correct count, wrong count, session best streak, all-time best streak
+
+**R5 · Chord strum playback in Chord Charts** — `Views/ChordChartsView.swift` + `ContentView.swift`
+- Add "▶ Play" button to right theory panel; disabled + `.opacity(0.4)` when `soundEnabled` is false
+- On tap: iterate `ChordVoicing.frets`, call `audioEngine.play(string: i, fret: frets[i]!)` with 80 ms inter-string delay via `DispatchQueue.main.asyncAfter`
+- Pass `audioEngine: NoteAudioEngine` into `ChordChartsView` as a parameter from `ContentView`
+
+### Phase 3 (future, no implementation date)
+- Portrait-compatible Scale Explorer (currently landscape-only — the rotate prompt blocks most users)
+- Custom note drill mode — filter `GameState.nextQuestion()` to a user-selected note subset
+- Extended chord voicings (9th/11th/13th chord types in `ChordLibrary`)
+- Chord library currently: all 12 roots × 5 types + limited sus2/sus4
+
+### Known simulator limitations
 - Tuner untested on simulator (no real mic) — test on device only
 - Sound synthesis untestable on simulator (AVAudioEngine buffers) — test on device only

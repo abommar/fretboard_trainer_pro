@@ -15,6 +15,8 @@ struct FretboardView: View {
     var scaleHighlights: [(FretPosition, Color)] = []
     /// Visual theme for the fretboard.
     var style: FretboardStyle = .rosewood
+    /// When non-nil, this fret wire is drawn in gold to mark the difficulty boundary.
+    var difficultyBoundaryFret: Int? = nil
     /// When non-nil, each fret/string intersection is tappable. Called with (stringIndex, fret).
     var onFretTap: ((Int, Int) -> Void)? = nil
 
@@ -39,6 +41,7 @@ struct FretboardView: View {
                 fretboardBackground
                 nutView
                 fretWires
+                if let bf = difficultyBoundaryFret { difficultyBoundaryLine(at: bf) }
                 stringLines
                 inlayDots
                 if showNoteLabels { noteLabelsOverlay }
@@ -49,7 +52,7 @@ struct FretboardView: View {
                 stringLabels
                 if onFretTap != nil { fretTapOverlay }
             }
-            .frame(width: fretboardWidth, height: fretboardHeight + 36)
+            .frame(width: fretboardWidth, height: fretboardHeight + 20)
             .padding(.leading, 40) // space for string labels
         }
     }
@@ -92,6 +95,29 @@ struct FretboardView: View {
                 .frame(width: 2, height: fretboardHeight)
                 .offset(x: nutWidth + CGFloat(fret) * fretWidth)
         }
+    }
+
+    // MARK: - Difficulty boundary marker
+    private func difficultyBoundaryLine(at fret: Int) -> some View {
+        let x = nutWidth + CGFloat(fret) * fretWidth
+        return ZStack {
+            // Glow
+            Rectangle()
+                .fill(Color(hex: "#FFD700").opacity(0.35))
+                .frame(width: 8, height: fretboardHeight)
+                .blur(radius: 4)
+            // Gold wire
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color(hex: "#FFE066"), Color(hex: "#FFD700"), Color(hex: "#B8860B")],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 3, height: fretboardHeight)
+        }
+        .offset(x: x)
     }
 
     // MARK: - Strings
@@ -182,7 +208,9 @@ struct FretboardView: View {
                 .frame(width: 20, height: 20)
                 .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 1.5))
                 .position(x: x, y: y)
+                .animation(nil, value: color)
         }
+        .transaction { $0.animation = nil }
     }
 
     // MARK: - Study mode note labels
@@ -233,7 +261,6 @@ struct FretboardView: View {
                 .frame(width: 22, height: 22)
                 .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 2))
                 .position(x: x, y: y)
-                .transition(.scale.combined(with: .opacity))
         }
     }
 
@@ -298,8 +325,8 @@ struct FretboardView: View {
     private var fretNumbers: some View {
         ForEach(0...fretCount, id: \.self) { fret in
             Text("\(fret)")
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundColor(.white.opacity(0.5))
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(.white.opacity(0.85))
                 .offset(x: fretX(fret: fret) - 8, y: fretboardHeight + 4)
         }
     }

@@ -60,7 +60,52 @@ func note(string: Int, fret: Int) -> Note {
 
 ## Roadmap
 
-- **Phase 2** — "Find The Fret" inverse mode (given a note, tap its location)
-- **Phase 3** — Fretboard style picker (Les Paul, Strat, etc.)
-- **Phase 4** — Timed challenge modes
-- **Phase 5** — Alternate tunings and instruments
+Phases 1–4 are complete and shipping. See CLAUDE.md for full feature details.
+
+---
+
+### Phase 2 — UX & Engagement (post-TestFlight v1)
+
+Driven by simulator UX testing. Five targeted improvements addressing onboarding gaps, learning feedback, and engagement loops.
+
+#### R1 · Onboarding (3-screen intro)
+- Swipeable `OnboardingView` shown once on first launch (gated by `"hasSeenOnboarding"` `AppStorage` bool)
+- Screen 1: Name That Note — "We highlight a fret. You name the note."
+- Screen 2: Find The Fret — "We name the note. You tap every position on the neck."
+- Screen 3: Study Mode — "Tap Study to see all notes color-coded. Tap any note to filter."
+- Each screen: large icon (drawn in Canvas), one headline, one body line, Next / Get Started buttons
+- Skippable from any screen. No networking, no permissions.
+- **Files:** `Views/OnboardingView.swift` (new) + `FretTrainerEZApp.swift` (launch gate)
+
+#### R2 · Wrong-answer correction in Name That Note
+- When user taps wrong note, flash the tapped button red AND briefly highlight the correct button green before auto-advancing
+- Requires a new `AnswerState` case: `.wrongReveal(correct: Note)` (or carry correct note in existing `.wrong`)
+- `NoteAnswerButtonsView` reads the new state to color the correct button green for the reveal window
+- No new delay logic needed — plugs into the existing 0.6 s `.wrong` → `.none` cycle
+- **Files:** `Game/GameState.swift`, `Views/NoteAnswerButtonsView.swift`
+
+#### R3 · Position count hint in Find The Fret
+- Below the large note name display, show: "Find all N positions" where N = `gameState.required.count`
+- `required: Set<FretPosition>` is already computed in `GameState` — just expose its count to the UI
+- As positions are found, update to "N remaining" (use `required.count - foundFrets.count`)
+- **Files:** `ContentView.swift` (add `Text` below note display in Find The Fret layout)
+
+#### R4 · Streak counter + timed-mode session summary
+- Add `currentStreak: Int` and `bestStreak: Int` to `GameState`; reset streak on wrong answer, increment on correct
+- Persist `bestStreak` to `UserDefaults` keyed per mode (same pattern as `best_\(mode)_\(duration)`)
+- After timed game ends, show a `TimedResultView` sheet: correct count, wrong count, best streak this session, personal best streak
+- **Files:** `Game/GameState.swift`, `Views/TimedResultView.swift` (new)
+
+#### R5 · Chord strum playback in Chord Charts
+- Add a "▶ Play" button to `ChordChartsView`'s right panel
+- On tap, iterate non-nil frets in the selected `ChordVoicing.frets` array (index = string), call `audioEngine.play(string: i, fret: frets[i]!)` with 80 ms inter-string delay using `DispatchQueue.main.asyncAfter`
+- Gate behind `soundEnabled` `@AppStorage` (same as everywhere else); show button as disabled with `.opacity(0.4)` when sound is off
+- `NoteAudioEngine` is already a final class passed down — pass it into `ChordChartsView` as a parameter
+- **Files:** `Views/ChordChartsView.swift`, `ContentView.swift` (pass `audioEngine`)
+
+---
+
+### Phase 3 (future)
+- Portrait-compatible Scale Explorer layout
+- Custom note drill mode (focus on specific notes)
+- Extended chord voicings (9th/11th/13th)

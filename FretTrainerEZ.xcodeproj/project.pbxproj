@@ -28,6 +28,8 @@
 		DD000002000000000000002A /* FretboardStyleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002000000000000002B /* FretboardStyleView.swift */; };
 		EE000001000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE000001000000000000001B /* SettingsView.swift */; };
 		FF000001000000000000001A /* NoteAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000001000000000000001B /* NoteAudioEngine.swift */; };
+		FF000002000000000000002A /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000002000000000000002B /* OnboardingView.swift */; };
+		FF000003000000000000003A /* TimedResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000003000000000000003B /* TimedResultView.swift */; };
 		GG000001000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = GG000001000000000000001B /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -65,6 +67,8 @@
 		DD000002000000000000002B /* FretboardStyleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FretboardStyleView.swift; sourceTree = "<group>"; };
 		EE000001000000000000001B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		FF000001000000000000001B /* NoteAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAudioEngine.swift; sourceTree = "<group>"; };
+		FF000002000000000000002B /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		FF000003000000000000003B /* TimedResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedResultView.swift; sourceTree = "<group>"; };
 		GG000001000000000000001B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -126,6 +130,8 @@
 				CC000002000000000000002B /* ScalesView.swift */,
 				DD000002000000000000002B /* FretboardStyleView.swift */,
 				EE000001000000000000001B /* SettingsView.swift */,
+				FF000002000000000000002B /* OnboardingView.swift */,
+				FF000003000000000000003B /* TimedResultView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -209,7 +215,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2630;
 				TargetAttributes = {
 					AA000013000000000000FF10 = {
 						CreatedOnToolsVersion = 15.0;
@@ -275,6 +281,8 @@
 				DD000002000000000000002A /* FretboardStyleView.swift in Sources */,
 				EE000001000000000000001A /* SettingsView.swift in Sources */,
 				FF000001000000000000001A /* NoteAudioEngine.swift in Sources */,
+				FF000002000000000000002A /* OnboardingView.swift in Sources */,
+				FF000003000000000000003A /* TimedResultView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -354,6 +362,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -409,6 +418,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
@@ -433,7 +443,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -469,7 +479,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
