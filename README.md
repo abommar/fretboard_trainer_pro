@@ -1,18 +1,38 @@
 # FretTrainerEZ
 
-An iOS app for learning guitar fretboard notes through interactive quizzes. Built with SwiftUI, targeting iOS 17+.
+An iOS app for learning guitar fretboard notes through interactive game modes and music theory tools. Built with SwiftUI, targeting iOS 17+. No third-party dependencies — Apple frameworks only.
 
 ## Features
 
-- **Visual fretboard** — Scrollable 22-fret guitar neck drawn entirely in code. Wood-toned background, graduated string thicknesses, pearl inlay dots, and metallic fret wires.
-- **Name That Note** — A random position is highlighted on the fretboard; tap the correct note from 12 answer buttons.
-- **Instant feedback** — Green/red flash on answer, correct note revealed on wrong guesses, CoreHaptics feedback.
-- **Session score** — Running correct/total/percentage tally with a reset button.
-- **Fully offline** — No network access, no third-party dependencies. Works in airplane mode from first launch.
+### Game Modes
+
+- **Name That Note** — A fret position is highlighted; tap the correct note from 12 answer buttons. Wrong taps flash red and reveal the correct note in green before auto-advancing.
+- **Find The Fret** — A note name is shown; tap every position of that note on the neck. Each correct tap stays green; wrong taps flash red. Shows "find all N positions" hint and remaining count as you progress.
+- **Memory Challenge** — Positions flash gold for a few seconds, then clear. Recall every position from memory and tap them. Gold progress bar counts down during the flash phase.
+
+### Practice vs. Timed Mode
+All game modes support **Practice** (untimed, no pressure) and **Timed** (30s / 1m / 2m sessions). Timed sessions show a live countdown, per-game best score, and a summary sheet on completion with correct/wrong counts and streak stats.
+
+### Study Mode
+Toggle Study in the header to see all 12 notes color-coded on the fretboard as pill labels. Tap any note button to filter the board to only that note's positions. Tap a fret to hear its tone (when sound is on).
+
+### Music Tools (hamburger menu)
+- **Circle of Fifths** — Canvas-drawn circle; tap any key to highlight its tonic/subdominant/dominant neighbors. Detail card shows all 7 diatonic chords and 4 common progressions with real chord names. Orientation-aware layout.
+- **Chord Charts** — Scrollable chord diagrams with theory panel (chord name, mood, notes, intervals). Tap the Play button to strum the chord with 80ms inter-string delay.
+- **Chromatic Tuner** — Mic-based pitch detection with autocorrelation. Large note name + cents needle. Orientation-aware layout.
+- **Scale Explorer** — 10 scale types, all 12 roots, fretboard dot overlay. Root dots in red, scale tones in blue. Landscape-optimized.
+- **Fretboard Style** — 5 wood themes: rosewood, maple, ebony, walnut, midnight.
+- **Settings** — Haptics toggle, sound effects toggle, fretboard tips toggle, sharps/flats picker with live preview.
+
+### Sound Engine
+Karplus-Strong plucked-string synthesis via `AVAudioEngine`. No audio files — every note is synthesized from scratch. Mixes with background music (`.ambient` session category).
+
+### Onboarding
+3-screen swipeable intro shown once on first launch. Each screen explains a game mode with a Canvas-drawn icon. Skippable from any screen.
 
 ## Requirements
 
-- Xcode 15+
+- Xcode 26.3 (`/Applications/Xcode.app`)
 - iOS 17.0+ deployment target
 - Swift 5.9
 
@@ -30,20 +50,34 @@ Build and run on a simulator or device with **Cmd + R**. Run unit tests with **C
 
 ```
 FretTrainerEZ/
+├── NoteAudioEngine.swift            # Karplus-Strong synthesis via AVAudioEngine
 ├── Models/
-│   ├── Note.swift           # 12-note chromatic enum with sharp/flat display
-│   ├── GuitarTuning.swift   # Tuning struct (default: standard EADGBE)
-│   └── Fretboard.swift      # Note lookup and position search logic
+│   ├── Note.swift                   # 12-note enum, sharp/flat names, chromatic math
+│   ├── GuitarTuning.swift           # Tuning struct + 10 alternate tuning presets
+│   ├── Fretboard.swift              # note(string:fret:), allPositions(for:)
+│   ├── ChordLibrary.swift           # 70+ voicings across all 12 roots and 7 chord types
+│   ├── ScaleLibrary.swift           # 10 scale types with intervals and flavor strings
+│   ├── FretboardStyle.swift         # 5 wood themes with gradient color data
+│   └── MusicTheory.swift            # Circle of Fifths, diatonic theory, chord functions
 ├── Game/
-│   └── GameState.swift      # @Observable game engine, scoring, haptics
+│   └── GameState.swift              # @Observable engine: scoring, streaks, haptics, timed mode
 ├── Views/
-│   ├── FretboardView.swift       # Rendered fretboard with highlight circle
-│   └── NoteAnswerButtonsView.swift  # 12-button answer grid
-├── ContentView.swift         # Root view
-└── FretTrainerEZApp.swift    # App entry point
+│   ├── FretboardView.swift          # Scrollable fretboard; wood theme; tap overlay
+│   ├── NoteAnswerButtonsView.swift  # 12-button answer grid with wrong-reveal coloring
+│   ├── DrawerMenuView.swift         # Slide-out hamburger drawer + AppScreen enum
+│   ├── OnboardingView.swift         # 3-screen first-launch intro
+│   ├── TimedResultView.swift        # Post-game sheet: score, streaks, best
+│   ├── CircleOfFifthsView.swift     # Canvas circle + diatonic detail card
+│   ├── ChordChartsView.swift        # Split-panel chord diagrams + theory + strum
+│   ├── ChromaticTunerView.swift     # Mic pitch detection + cents meter
+│   ├── ScalesView.swift             # Landscape scale explorer
+│   ├── FretboardStyleView.swift     # Theme picker with mini-preview
+│   └── SettingsView.swift           # App preferences
+├── ContentView.swift                # Root layout, study mode, game mode routing
+└── FretTrainerEZApp.swift           # App entry + onboarding gate
 
 FretTrainerEZTests/
-└── FretTrainerEZTests.swift  # Unit tests for music theory logic
+└── FretTrainerEZTests.swift         # 61+ unit tests (fretboard, music theory, tuner)
 ```
 
 ## How It Works
@@ -56,56 +90,27 @@ func note(string: Int, fret: Int) -> Note {
 }
 ```
 
-`GameState` picks a random string/fret, computes the correct note, handles answer submission, and auto-advances to the next question after a short delay.
+`GameState` (@Observable) drives all three game modes: picks questions, evaluates answers, manages streaks, runs the countdown timer, and persists best scores via `UserDefaults`.
 
-## Roadmap
+## Architecture Notes
 
-Phases 1–4 are complete and shipping. See CLAUDE.md for full feature details.
+- String indexing: `0 = low E, 5 = high E`
+- `@Observable` macro (Observation framework) — not `ObservableObject`
+- All UI drawn in code — no image or audio assets
+- `Color(hex:)` extension lives in `FretboardView.swift`, used across all views
+- Orientation-aware full-screen views (`CircleOfFifthsView`, `ChromaticTunerView`, `ScalesView`) use `GeometryReader` as the body root — the only reliable way to get real dimensions inside `fullScreenCover`
 
----
+## TestFlight Checklist
 
-### Phase 2 — UX & Engagement (post-TestFlight v1)
+- [ ] App icon (1024×1024 + device sizes in `AppIcon.appiconset`)
+- [ ] Bundle ID registered in Developer Portal (`com.dontfretaboutitai.frettrainerez`)
+- [ ] Signing team configured in project settings
+- [ ] Version / build numbers set in project settings
+- [ ] Archive → Xcode Organizer → Distribute → App Store Connect → Upload
+- [ ] App Store Connect app record + testers added
 
-Driven by simulator UX testing. Five targeted improvements addressing onboarding gaps, learning feedback, and engagement loops.
+## Roadmap (Post-TestFlight)
 
-#### R1 · Onboarding (3-screen intro)
-- Swipeable `OnboardingView` shown once on first launch (gated by `"hasSeenOnboarding"` `AppStorage` bool)
-- Screen 1: Name That Note — "We highlight a fret. You name the note."
-- Screen 2: Find The Fret — "We name the note. You tap every position on the neck."
-- Screen 3: Study Mode — "Tap Study to see all notes color-coded. Tap any note to filter."
-- Each screen: large icon (drawn in Canvas), one headline, one body line, Next / Get Started buttons
-- Skippable from any screen. No networking, no permissions.
-- **Files:** `Views/OnboardingView.swift` (new) + `FretTrainerEZApp.swift` (launch gate)
-
-#### R2 · Wrong-answer correction in Name That Note
-- When user taps wrong note, flash the tapped button red AND briefly highlight the correct button green before auto-advancing
-- Requires a new `AnswerState` case: `.wrongReveal(correct: Note)` (or carry correct note in existing `.wrong`)
-- `NoteAnswerButtonsView` reads the new state to color the correct button green for the reveal window
-- No new delay logic needed — plugs into the existing 0.6 s `.wrong` → `.none` cycle
-- **Files:** `Game/GameState.swift`, `Views/NoteAnswerButtonsView.swift`
-
-#### R3 · Position count hint in Find The Fret
-- Below the large note name display, show: "Find all N positions" where N = `gameState.required.count`
-- `required: Set<FretPosition>` is already computed in `GameState` — just expose its count to the UI
-- As positions are found, update to "N remaining" (use `required.count - foundFrets.count`)
-- **Files:** `ContentView.swift` (add `Text` below note display in Find The Fret layout)
-
-#### R4 · Streak counter + timed-mode session summary
-- Add `currentStreak: Int` and `bestStreak: Int` to `GameState`; reset streak on wrong answer, increment on correct
-- Persist `bestStreak` to `UserDefaults` keyed per mode (same pattern as `best_\(mode)_\(duration)`)
-- After timed game ends, show a `TimedResultView` sheet: correct count, wrong count, best streak this session, personal best streak
-- **Files:** `Game/GameState.swift`, `Views/TimedResultView.swift` (new)
-
-#### R5 · Chord strum playback in Chord Charts
-- Add a "▶ Play" button to `ChordChartsView`'s right panel
-- On tap, iterate non-nil frets in the selected `ChordVoicing.frets` array (index = string), call `audioEngine.play(string: i, fret: frets[i]!)` with 80 ms inter-string delay using `DispatchQueue.main.asyncAfter`
-- Gate behind `soundEnabled` `@AppStorage` (same as everywhere else); show button as disabled with `.opacity(0.4)` when sound is off
-- `NoteAudioEngine` is already a final class passed down — pass it into `ChordChartsView` as a parameter
-- **Files:** `Views/ChordChartsView.swift`, `ContentView.swift` (pass `audioEngine`)
-
----
-
-### Phase 3 (future)
-- Portrait-compatible Scale Explorer layout
-- Custom note drill mode (focus on specific notes)
-- Extended chord voicings (9th/11th/13th)
+- Portrait-compatible Scale Explorer (currently landscape-only, shows rotate prompt in portrait)
+- Custom note drill mode — filter questions to a user-selected note subset
+- Extended chord voicings (9th/11th/13th chord types)

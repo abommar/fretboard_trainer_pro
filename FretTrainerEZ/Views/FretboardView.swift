@@ -45,14 +45,14 @@ struct FretboardView: View {
                 stringLines
                 inlayDots
                 if showNoteLabels { noteLabelsOverlay }
-                if !scaleHighlights.isEmpty { scaleHighlightDots }
+                scaleHighlightDots
                 foundPositionCircles
                 highlightCircle
                 fretNumbers
                 stringLabels
                 if onFretTap != nil { fretTapOverlay }
             }
-            .frame(width: fretboardWidth, height: fretboardHeight + 20)
+            .frame(width: fretboardWidth, height: fretboardHeight + 28)
             .padding(.leading, 40) // space for string labels
         }
     }

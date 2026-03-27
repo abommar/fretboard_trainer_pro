@@ -1,7 +1,7 @@
 # FretTrainerEZ — Claude Context
 
 ## What This Is
-An iOS guitar fretboard trainer app built in Swift/SwiftUI. All feature phases complete. Two game modes, study mode, sound effects, and six music tool screens. Next step: TestFlight.
+An iOS guitar fretboard trainer app built in Swift/SwiftUI. Phase 1 + Phase 2 complete. Three game modes (Name That Note, Find The Fret, Memory Challenge), study mode, sound synthesis, onboarding, timed session summaries, and six music tool screens. Next step: TestFlight.
 
 ## Hard Constraints (Never Violate)
 - **No third-party dependencies.** Apple frameworks only (SwiftUI, SwiftData, Foundation, CoreHaptics, AVFoundation). No SPM packages, no CocoaPods.
@@ -42,6 +42,8 @@ FretTrainerEZ/
 │   │                               #   foundPositions, showNoteLabels, studyFilterNote, scaleHighlights,
 │   │                               #   style: FretboardStyle, onFretTap
 │   ├── NoteAnswerButtonsView.swift # 12-button grid; useFlats @AppStorage; study mode: onStudyTap + studySelectedNote
+│   ├── OnboardingView.swift        # 3-screen swipeable first-launch intro; Canvas icons; skippable
+│   ├── TimedResultView.swift       # Post-timed-game sheet: correct/wrong/streak/best-streak breakdown
 │   ├── DrawerMenuView.swift        # Slide-out hamburger drawer + AppScreen enum
 │   │                               #   (.circleOfFifths, .chordCharts, .chromaticTuner, .scales, .fretboardStyle, .settings)
 │   ├── CircleOfFifthsView.swift    # Canvas-drawn circle; orientation-aware (GeometryReader as body root):
@@ -52,6 +54,7 @@ FretTrainerEZ/
 │   │                               #   actual chord names for the selected key.
 │   ├── ChordChartsView.swift       # Left/right split: left=scrollable chord diagrams, right=theory panel
 │   │                               #   (chord name + mood subtitle, NOTES pills, INTERVALS side-by-side)
+│   │                               #   ▶ Play button: strums chord via audioEngine with 80ms inter-string delay
 │   ├── ChromaticTunerView.swift    # Chromatic tuner: PitchDetector struct + TunerEngine @Observable + UI.
 │   │                               #   Orientation-aware (GeometryReader as body root): portrait=stacked,
 │   │                               #   landscape=two-column. TunerEngine: all private audio vars are
@@ -60,11 +63,12 @@ FretTrainerEZ/
 │   ├── FretboardStyleView.swift    # Full-screen style picker with Canvas mini-preview per style
 │   └── SettingsView.swift          # Haptics toggle, Sound Effects toggle, Note Names sharps/flats picker + live preview
 ├── ContentView.swift               # Root layout + SnapSlider; isStudyMode, studyHighlightNote, audioEngine,
-│                                   #   fretboard (stored), soundEnabled, useFlats, fretboardStyle @AppStorage
-└── FretTrainerEZApp.swift
+│                                   #   fretboard (stored), soundEnabled, useFlats, tipsEnabled, fretboardStyle @AppStorage
+│                                   #   memoryFlashProgress: CGFloat drives Memory Challenge progress bar
+└── FretTrainerEZApp.swift          # @AppStorage("hasSeenOnboarding") gates ContentView vs OnboardingView
 
 FretTrainerEZTests/
-└── FretTrainerEZTests.swift   # XCTest: fretboard tests + 15 PitchDetector tuner tests (19 total)
+└── FretTrainerEZTests.swift   # XCTest: 61+ tests — fretboard, music theory, chord library, PitchDetector
 ```
 
 ## Key Design Decisions
@@ -74,8 +78,10 @@ FretTrainerEZTests/
 - `Color(hex:)` extension lives in `FretboardView.swift` — used across all views
 - Haptics gracefully degrade if hardware doesn't support them; `hapticsEnabled` read directly from `UserDefaults.standard` in `GameState.playHaptic()` (not @AppStorage — GameState is not a View)
 - Root layout is a `VStack` with `.background(bg.ignoresSafeArea())` — NOT a ZStack — to keep header pinned to top
-- `GeometryReader` in ContentView drives adaptive sizing: portrait uses 200pt fretboard / 44pt buttons; landscape (<500pt height) shrinks both
-- FretboardView internal content is exactly 200pt tall (fretboardHeight+36); frame must match or use `.clipped()`
+- `GeometryReader` in ContentView drives adaptive sizing: portrait uses up to 192pt fretboard / 44pt buttons; landscape (`geo.size.height < 500`) shrinks both (fretboard locked to 192pt, prompt cards 50pt)
+- FretboardView internal content is exactly **192pt** tall (`fretboardHeight=164` + 28 for fret numbers); `fretboardContentHeight = 192` in ContentView; frame must match or use `.clipped()`
+- FretboardView and promptText both use `.transaction { $0.animation = nil }` to prevent ambient animation bleed from shifting layout
+- `.animation(.easeInOut, value: gameState.gameMode)` must NOT be placed on `controlRow` — it bleeds into VStack layout and animates the fretboard position on mode switch; only `isTimedMode` and `isTimerActive` are animated on `controlRow`
 - Highlight dot uses `.id("\(string)-\(fret)")` to force recreation on new question, preventing position animation bugs
 - All buttons use `.buttonStyle(.plain)` to remove SwiftUI's 44pt minimum tap height
 - `fretboard` is a stored `let` property in ContentView (not created inline) so the same instance is shared between FretboardView and the onFretTap closure
@@ -83,9 +89,11 @@ FretTrainerEZTests/
 
 ## AppStorage Keys
 - `"fretboardStyle"` — String raw value of `FretboardStyle`
-- `"hapticsEnabled"` — Bool, default true (read via UserDefaults in GameState)
+- `"hapticsEnabled"` — Bool, default true (read via UserDefaults in GameState — not @AppStorage, GameState is not a View)
 - `"soundEnabled"` — Bool, default false
 - `"useFlats"` — Bool, default false — propagated to: NoteAnswerButtonsView, ContentView prompts, ScalesView, ChordChartsView, CircleOfFifthsView
+- `"tipsEnabled"` — Bool, default true — controls tip-of-the-question view in ContentView
+- `"hasSeenOnboarding"` — Bool, default false — gate in FretTrainerEZApp.swift; set true on onboarding completion/skip
 
 ## Difficulty & Timed Mode
 - `Difficulty` enum: `.beginner` (frets 0–5), `.intermediate` (0–10), `.advanced` (0–22)
@@ -95,11 +103,13 @@ FretTrainerEZTests/
 - `SnapSlider` (bottom of ContentView.swift): custom metallic 3-position slider with DragGesture and spring snap
 
 ## Game Modes
-- **Name That Note**: fret is highlighted, user taps correct note name from 12-button grid; note tone plays on each new question (when sound on)
-- **Find The Fret**: note name shown, user taps ALL positions of that note on the fretboard; each correct tap stays highlighted green and plays its tone (when sound on); wrong taps flash red 0.6s; round advances when `required.isSubset(of: foundFrets)`; skip button skips to a different note
+- **Name That Note**: fret is highlighted, user taps correct note name from 12-button grid; note tone plays on each new question (when sound on); wrong tap flashes tapped button red and highlights correct button green before auto-advancing
+- **Find The Fret**: note name shown, user taps ALL positions of that note on the fretboard; each correct tap stays highlighted green and plays its tone (when sound on); wrong taps flash red 0.6s; shows "find all N positions" / "N remaining" hint; skip button; round advances when `required.isSubset(of: foundFrets)`
+- **Memory Challenge**: gold positions flash for `flashDuration` seconds (4s/2.5s/1.5s by difficulty), then board clears; user taps all positions from memory; wrong taps flash red; gold progress bar counts down during flash via `memoryFlashProgress: CGFloat` animated with view-scoped `.animation(.linear(duration:), value:)` — NOT `withAnimation` (ambient animation would bleed into VStack layout)
 - `FretPosition: Hashable` struct used for multi-tap tracking; `foundFrets: Set<FretPosition>` in GameState
-- `questionID: UUID` on GameState regenerated each `nextQuestion()` — ContentView uses `.onChange(of: gameState.questionID)` to trigger audio in Name That Note
+- `questionID: UUID` on GameState regenerated each `nextQuestion()` — ContentView uses `.onChange(of: gameState.questionID)` to trigger audio in Name That Note and reset memory progress bar
 - Best timed scores persisted via UserDefaults, key: `"best_\(gameMode.rawValue)_\(timerDuration)"`
+- `currentStreak` + `bestStreakThisSession` tracked in GameState; best streak persisted per mode via `"bestStreak_\(gameMode.rawValue)"`
 
 ## Study Mode
 - **Study toggle** in header: shows all note labels on fretboard as color-coded pills (12 hues, one per note)
@@ -122,7 +132,7 @@ FretTrainerEZTests/
 - ContentView presents screens via `.fullScreenCover(item: $activeScreen)`
 - Navigation back from each screen uses `@Environment(\.dismiss)`
 - **CircleOfFifthsView**: Diatonic chord highlighting — tap a key to highlight IV/I/V (outer) and ii/vi/iii (inner) by chord function color. Detail card shows all 7 diatonic chords as color-coded pills + 4 common progressions with real chord names. Orientation-aware layout.
-- **ChordChartsView**: Split layout — left panel (44% width, max 175pt) scrollable chord diagrams; right panel theory breakdown: chord name + mood subtitle, NOTES pills + INTERVALS list side-by-side
+- **ChordChartsView**: Split layout — left panel (44% width, max 175pt) scrollable chord diagrams; right panel theory breakdown: chord name + mood subtitle, NOTES pills + INTERVALS list side-by-side; ▶ Play button strums chord via `audioEngine.play(string:fret:)` with 80ms inter-string delay; disabled when `soundEnabled` is false
 - **ChordDiagramView**: wood background, fret wires, string lines, red finger dots, X/O above nut; `baseFret` label for barre positions
 - **ChromaticTunerView**: Mic-based pitch detection, large note name + cents meter needle, tuning reference row. Orientation-aware (portrait=stacked, landscape=two-column). Back button uses dismiss only; cleanup via `.onDisappear { engine.stop() }`.
 - **ScalesView**: Landscape-only scale explorer; portrait shows rotate prompt; 4-column root grid + `.wheel` scale picker; fretboard with root (red) and scale tone (blue) dots; respects `useFlats`
@@ -208,7 +218,7 @@ All views use the same dark theme colors:
 ## TestFlight Checklist
 These items are needed before the first TestFlight build:
 - [ ] **App icon** — all required sizes in `Assets.xcassets/AppIcon.appiconset` (1024×1024 + all device sizes, or use a single 1024×1024 with "Single Size" option in Xcode 15+)
-- [ ] **Bundle ID registered** — `com.frettrainerez.app` must be registered in App Store Connect / Developer Portal
+- [ ] **Bundle ID registered** — `com.dontfretaboutitai.frettrainerez` must be registered in App Store Connect / Developer Portal
 - [ ] **Signing team** — set Development Team in project signing settings (requires paid Apple Developer account)
 - [ ] **Version & build** — CFBundleShortVersionString (e.g. "1.0") and CFBundleVersion (e.g. "1") set in Info.plist / project settings
 - [ ] **Privacy descriptions** — NSMicrophoneUsageDescription already set ✓
@@ -217,36 +227,16 @@ These items are needed before the first TestFlight build:
 - [ ] **Upload** — Xcode Organizer → Distribute App → App Store Connect → Upload
 - [ ] **App Store Connect** — create app record, add internal testers (no review needed for internal), or add external testers (requires Beta App Review)
 
-## Roadmap / What's NOT Built Yet
+## Roadmap
 
-### Phase 2 — UX & Engagement (next up, post-TestFlight v1)
-Derived from simulator UX testing session (2026-03-25). Five items in priority order:
+### Phase 2 — UX & Engagement — COMPLETE (2026-03-25)
+All five items shipped on branch `phase2-ux-engagement`:
 
-**R1 · Onboarding** — `Views/OnboardingView.swift` (new) + `FretTrainerEZApp.swift` (launch gate)
-- 3-screen swipeable intro, shown once via `"hasSeenOnboarding"` `@AppStorage` bool
-- Screen 1: Name That Note explanation. Screen 2: Find The Fret explanation. Screen 3: Study Mode tip.
-- Each screen: Canvas-drawn icon, headline, body, Next/Get Started buttons. Skippable from any screen.
-- No networking, no permissions required.
-
-**R2 · Wrong-answer correction** — `Game/GameState.swift` + `Views/NoteAnswerButtonsView.swift`
-- Add `.wrongReveal(correct: Note)` case to `AnswerState` (or carry correct note in existing `.wrong`)
-- On wrong tap: flash tapped button red AND highlight correct button green during reveal window (0.6 s)
-- Plugs into existing auto-advance timing — no new delay logic needed
-
-**R3 · Position count hint in Find The Fret** — `ContentView.swift`
-- `required: Set<FretPosition>` is already computed in `GameState`
-- Add `Text("Find all \(gameState.required.count) positions")` below note name; update to "N remaining" as frets are found
-- One-line addition to the Find The Fret note display section of ContentView
-
-**R4 · Streak counter + timed session summary** — `Game/GameState.swift` + `Views/TimedResultView.swift` (new)
-- Add `currentStreak: Int` and `bestStreak: Int` to `GameState`; increment on correct, reset on wrong
-- Persist `bestStreak` per mode+duration in `UserDefaults` (same pattern as `best_\(mode)_\(duration)`)
-- After timed game ends, show `TimedResultView` sheet: correct count, wrong count, session best streak, all-time best streak
-
-**R5 · Chord strum playback in Chord Charts** — `Views/ChordChartsView.swift` + `ContentView.swift`
-- Add "▶ Play" button to right theory panel; disabled + `.opacity(0.4)` when `soundEnabled` is false
-- On tap: iterate `ChordVoicing.frets`, call `audioEngine.play(string: i, fret: frets[i]!)` with 80 ms inter-string delay via `DispatchQueue.main.asyncAfter`
-- Pass `audioEngine: NoteAudioEngine` into `ChordChartsView` as a parameter from `ContentView`
+- **R1 · Onboarding** ✓ — `Views/OnboardingView.swift` + `FretTrainerEZApp.swift` launch gate
+- **R2 · Wrong-answer correction** ✓ — tapped button red + correct button green during reveal window
+- **R3 · Position count hint** ✓ — "find all N positions" / "N remaining" in Find The Fret and Memory Challenge
+- **R4 · Streak counter + timed session summary** ✓ — `currentStreak`, `bestStreakThisSession`, `TimedResultView.swift`
+- **R5 · Chord strum playback** ✓ — ▶ Play button in ChordChartsView, 80ms inter-string delay
 
 ### Phase 3 (future, no implementation date)
 - Portrait-compatible Scale Explorer (currently landscape-only — the rotate prompt blocks most users)

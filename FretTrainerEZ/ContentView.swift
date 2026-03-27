@@ -148,7 +148,6 @@ struct ContentView: View {
                 .frame(height: fbH, alignment: .top)
                 .clipped()
                 .transaction { $0.animation = nil }
-
                 Divider()
                     .background(Color.white.opacity(0.1))
                     .padding(.vertical, compact ? 3 : 5)
@@ -220,18 +219,29 @@ struct ContentView: View {
                 audioEngine.play(string: gameState.currentString, fret: gameState.currentFret)
             }
             if gameState.gameMode == .memoryChallenge {
+                // Reset to full instantly, then let the view-scoped .animation(value:) on the
+                // progress bar drive the countdown. Using withAnimation here would create an
+                // ambient animation context that bleeds into VStack layout and moves the fretboard.
                 memoryFlashProgress = 1.0
-                withAnimation(.linear(duration: gameState.flashDuration)) {
+                DispatchQueue.main.async {
                     memoryFlashProgress = 0.0
                 }
+            }
+        }
+        .onChange(of: gameState.memoryPhase) { _, newPhase in
+            if newPhase != .flashing {
+                // Cancel the view-scoped progress animation immediately.
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { memoryFlashProgress = 0.0 }
             }
         }
         .preferredColorScheme(.dark)
     }
 
-    // FretboardView internal content height is exactly fretboardHeight(164) + 20 = 184pt.
-    // The frame must never exceed 184pt or SwiftUI will center the content and cause layout jitter.
-    private let fretboardContentHeight: CGFloat = 184
+    // FretboardView internal content height is exactly fretboardHeight(164) + 28 = 192pt.
+    // The frame must never exceed 192pt or SwiftUI will center the content and cause layout jitter.
+    private let fretboardContentHeight: CGFloat = 192
 
     private func fretboardFrameHeight(_ geo: GeometryProxy, compact: Bool, btnH: CGFloat) -> CGFloat {
         if compact {
@@ -385,31 +395,35 @@ struct ContentView: View {
                     .foregroundColor(gameState.memoryPhase == .flashing ? gold : .white)
                     .animation(.easeInOut(duration: 0.3), value: gameState.memoryPhase)
 
-                // Flash progress bar (only during flash phase)
-                if gameState.memoryPhase == .flashing {
-                    GeometryReader { barGeo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color.white.opacity(0.12))
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(gold)
-                                .frame(width: barGeo.size.width * memoryFlashProgress)
-                        }
+                // Progress bar / recall status — always same height slot
+                let found     = gameState.foundFrets.count
+                let total     = gameState.required.count
+                let remaining = total - found
+                ZStack {
+                    // Progress bar — visible only during flash
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.white.opacity(0.12))
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(gold)
+                            .scaleEffect(x: memoryFlashProgress, anchor: .leading)
+                            // Animation scoped to this view only — does NOT create an ambient
+                            // context that could bleed into VStack layout and shift the fretboard.
+                            .animation(.linear(duration: gameState.flashDuration), value: memoryFlashProgress)
                     }
-                    .frame(height: 5)
                     .padding(.horizontal, 24)
-                } else {
-                    // Recall status
-                    let found     = gameState.foundFrets.count
-                    let total     = gameState.required.count
-                    let remaining = total - found
+                    .opacity(gameState.memoryPhase == .flashing ? 1 : 0)
+
+                    // Recall status — visible only outside flash
                     Text(gameState.memoryPhase == .complete ? "Found all \(total)!" :
                          found == 0 ? "find all \(total) position\(total == 1 ? "" : "s")" :
                          "\(remaining) remaining")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(gameState.memoryPhase == .complete ? .green : .white.opacity(0.6))
-                        .animation(.easeInOut(duration: 0.15), value: gameState.memoryPhase)
+                        .opacity(gameState.memoryPhase == .flashing ? 0 : 1)
                 }
+                .frame(height: 14)
+                .transaction { $0.animation = nil }
             }
             .padding(.vertical, compact ? 4 : 8)
         }
@@ -504,12 +518,12 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity)
         }
+        .frame(minHeight: 36)
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(RoundedRectangle(cornerRadius: 10).fill(cardBg))
         .animation(.easeInOut(duration: 0.15), value: gameState.isTimedMode)
         .animation(.easeInOut(duration: 0.15), value: gameState.isTimerActive)
-        .animation(.easeInOut(duration: 0.15), value: gameState.gameMode)
     }
 
     private var modeBinding: Binding<Bool> {
@@ -617,37 +631,48 @@ struct ContentView: View {
 
     // MARK: - Prompt
 
-    @ViewBuilder
+    // Single stable Text view — no structural switching — to prevent layout shifts
+    // when the memory phase changes.
     private var promptText: some View {
+        Text(promptMessage)
+            .font(.system(size: 12, weight: promptSemibold ? .semibold : .medium))
+            .foregroundColor(promptColor)
+    }
+
+    private var promptMessage: String {
         if gameState.isTimedMode && !gameState.isTimerActive && !gameState.isTimeUp {
-            Text("Tap Start to begin")
-                .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.4))
-        } else if gameState.gameMode == .nameTheNote {
-            Text("What note is highlighted?")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
-        } else if gameState.gameMode == .findTheFret {
-            Text("Tap every \(useFlats ? gameState.correctNote.flatName : gameState.correctNote.sharpName) on the fretboard")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
-        } else {
-            // Memory mode
+            return "Tap Start to begin"
+        }
+        switch gameState.gameMode {
+        case .nameTheNote:
+            return "What note is highlighted?"
+        case .findTheFret:
+            return "Tap every \(useFlats ? gameState.correctNote.flatName : gameState.correctNote.sharpName) on the fretboard"
+        case .memoryChallenge:
             switch gameState.memoryPhase {
-            case .flashing:
-                Text("Memorize the positions!")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Color(hex: "#FFD700").opacity(0.9))
-            case .recalling:
-                Text("Tap all positions from memory")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
-            case .complete:
-                Text("Round complete!")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.green)
+            case .flashing:  return "Memorize the positions!"
+            case .recalling: return "Tap all positions from memory"
+            case .complete:  return "Round complete!"
             }
         }
+    }
+
+    private var promptColor: Color {
+        if gameState.isTimedMode && !gameState.isTimerActive && !gameState.isTimeUp {
+            return .white.opacity(0.4)
+        }
+        if gameState.gameMode == .memoryChallenge {
+            switch gameState.memoryPhase {
+            case .flashing:  return Color(hex: "#FFD700").opacity(0.9)
+            case .recalling: return .white.opacity(0.7)
+            case .complete:  return .green
+            }
+        }
+        return .white.opacity(0.7)
+    }
+
+    private var promptSemibold: Bool {
+        gameState.gameMode == .memoryChallenge && gameState.memoryPhase == .complete
     }
 
     // MARK: - Time-up Overlay
