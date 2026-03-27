@@ -2,9 +2,15 @@ import SwiftUI
 
 @main
 struct FretTrainerEZApp: App {
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if hasSeenOnboarding {
+                ContentView()
+            } else {
+                OnboardingView { hasSeenOnboarding = true }
+            }
         }
     }
 }

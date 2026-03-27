@@ -1,7 +1,11 @@
 import SwiftUI
 
 struct ChordChartsView: View {
+    let audioEngine: NoteAudioEngine
+
     @Environment(\.dismiss) private var dismiss
+
+    @AppStorage("soundEnabled") private var soundEnabled: Bool = false
 
     @State private var selectedRoot: Note = .C
     @State private var selectedType: ChordType = .major
@@ -116,6 +120,18 @@ struct ChordChartsView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Strum
+
+    private func strumChord(_ voicing: ChordVoicing) {
+        for (stringIdx, fret) in voicing.frets.enumerated() {
+            guard let fret else { continue }
+            let delay = Double(stringIdx) * 0.08
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                audioEngine.play(string: stringIdx, fret: fret)
+            }
+        }
+    }
+
     // MARK: - Chord content
 
     @ViewBuilder
@@ -135,7 +151,10 @@ struct ChordChartsView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                     ForEach(voicings) { voicing in
-                        ChordDiagramView(voicing: voicing)
+                        ChordDiagramView(voicing: voicing) {
+                            guard soundEnabled else { return }
+                            strumChord(voicing)
+                        }
                     }
                 }
                 .padding(16)
@@ -148,6 +167,7 @@ struct ChordChartsView: View {
 
 struct ChordDiagramView: View {
     let voicing: ChordVoicing
+    var onPlay: (() -> Void)? = nil
 
     private let stringCount  = 6
     private let fretRows     = 5
@@ -160,9 +180,20 @@ struct ChordDiagramView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            Text(voicing.name)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+            HStack {
+                Text(voicing.name)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
+                if let onPlay {
+                    Button(action: onPlay) {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(hex: "#E94560"))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
             diagramBody
                 .frame(height: CGFloat(fretRows) * cellH + nutH + 28)

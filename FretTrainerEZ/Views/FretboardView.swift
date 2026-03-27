@@ -5,6 +5,14 @@ struct FretboardView: View {
     let highlightString: Int?
     let highlightFret: Int?
     let highlightColor: Color
+    /// Positions already found (Find The Fret / Memory) — shown as persistent green circles.
+    var foundPositions: [FretPosition] = []
+    /// Scale / memory highlights: (position, color) pairs drawn as filled dots.
+    var scaleHighlights: [(FretPosition, Color)] = []
+    /// When non-nil, draws a gold boundary line at this fret wire.
+    var difficultyBoundaryFret: Int? = nil
+    /// When non-nil, each fret intersection is tappable.
+    var onFretTap: ((Int, Int) -> Void)? = nil
 
     // Layout constants
     private let stringSpacing: CGFloat = 28
@@ -27,14 +35,18 @@ struct FretboardView: View {
                 fretboardBackground
                 nutView
                 fretWires
+                if let bf = difficultyBoundaryFret { difficultyBoundaryLine(at: bf) }
                 stringLines
                 inlayDots
+                scaleHighlightDots
+                foundPositionCircles
                 highlightCircle
                 fretNumbers
                 stringLabels
+                if onFretTap != nil { fretTapOverlay }
             }
-            .frame(width: fretboardWidth, height: fretboardHeight + 36)
-            .padding(.leading, 40) // space for string labels
+            .frame(width: fretboardWidth, height: fretboardHeight + 28)
+            .padding(.leading, 40)
         }
     }
 
@@ -164,6 +176,63 @@ struct FretboardView: View {
 
     private func stringY(string: Int) -> CGFloat {
         fretboardPadding + CGFloat(totalStrings - 1 - string) * stringSpacing
+    }
+
+    // MARK: - Difficulty boundary line
+
+    private func difficultyBoundaryLine(at fret: Int) -> some View {
+        Rectangle()
+            .fill(Color(hex: "#FFD700"))
+            .frame(width: 2, height: fretboardHeight)
+            .offset(x: nutWidth + CGFloat(fret) * fretWidth)
+    }
+
+    // MARK: - Scale / memory highlight dots
+
+    private var scaleHighlightDots: some View {
+        ForEach(scaleHighlights.indices, id: \.self) { i in
+            let (pos, color) = scaleHighlights[i]
+            let x = fretX(fret: pos.fret)
+            let y = stringY(string: pos.string)
+            Circle()
+                .fill(color)
+                .frame(width: 20, height: 20)
+                .overlay(Circle().stroke(Color.white.opacity(0.4), lineWidth: 1.5))
+                .position(x: x, y: y)
+        }
+    }
+
+    // MARK: - Found position circles (Find The Fret / Memory)
+
+    private var foundPositionCircles: some View {
+        ForEach(foundPositions.indices, id: \.self) { i in
+            let pos = foundPositions[i]
+            let x = fretX(fret: pos.fret)
+            let y = stringY(string: pos.string)
+            Circle()
+                .fill(Color.green)
+                .frame(width: 22, height: 22)
+                .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 1.5))
+                .position(x: x, y: y)
+        }
+    }
+
+    // MARK: - Fret tap overlay
+
+    private var fretTapOverlay: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(0..<totalStrings, id: \.self) { s in
+                ForEach(0...fretboard.fretCount, id: \.self) { f in
+                    Color.clear
+                        .frame(width: f == 0 ? nutWidth + fretWidth / 2 : fretWidth,
+                               height: stringSpacing)
+                        .contentShape(Rectangle())
+                        .offset(x: f == 0 ? 0 : nutWidth + CGFloat(f) * fretWidth - fretWidth / 2,
+                                y: fretboardPadding + CGFloat(totalStrings - 1 - s) * stringSpacing - stringSpacing / 2)
+                        .onTapGesture { onFretTap?(s, f) }
+                }
+            }
+        }
     }
 
     // MARK: - Fret numbers
