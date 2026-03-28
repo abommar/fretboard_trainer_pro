@@ -3,9 +3,7 @@ import SwiftUI
 struct NoteAnswerButtonsView: View {
     let gameState: GameState
     var buttonHeight: CGFloat = 44
-    /// When non-nil the grid is in study mode: tapping a note calls this instead of scoring.
     var onStudyTap: ((Note) -> Void)? = nil
-    /// The note currently highlighted in study mode (nil = none selected).
     var studySelectedNote: Note? = nil
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 6)
@@ -13,13 +11,7 @@ struct NoteAnswerButtonsView: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(Note.allCases, id: \.self) { note in
-                NoteButton(
-                    note: note,
-                    gameState: gameState,
-                    buttonHeight: buttonHeight,
-                    onStudyTap: onStudyTap,
-                    studySelectedNote: studySelectedNote
-                )
+                NoteButton(note: note, gameState: gameState, buttonHeight: buttonHeight, onStudyTap: onStudyTap, studySelectedNote: studySelectedNote)
             }
         }
         .padding(.horizontal, 12)
@@ -49,8 +41,8 @@ private struct NoteButton: View {
     }
 
     private var buttonColor: Color {
-        if isStudyMode {
-            return isStudySelected ? studyColor : Color(hex: "#2A2A4A")
+        if let _ = onStudyTap {
+            return studySelectedNote == note ? .yellow.opacity(0.85) : Color(hex: "#2A2A4A")
         }
         switch gameState.answerState {
         case .idle:
@@ -66,9 +58,7 @@ private struct NoteButton: View {
     }
 
     private var borderColor: Color {
-        if isStudyMode {
-            return isStudySelected ? studyColor.opacity(0.5) : .clear
-        }
+        if onStudyTap != nil { return .clear }
         switch gameState.answerState {
         case .wrong(_, let correct):
             if note == correct { return .green }
@@ -98,14 +88,16 @@ private struct NoteButton: View {
                 .background(
                     RoundedRectangle(cornerRadius: 10)
                         .fill(buttonColor)
+                        .animation(.easeInOut(duration: 0.15), value: buttonColor)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10)
                                 .stroke(borderColor, lineWidth: 2.5)
+                                .animation(.easeInOut(duration: 0.15), value: borderColor)
                         )
                 )
         }
-        .animation(.easeInOut(duration: 0.15), value: isStudyMode ? isStudySelected : (gameState.answerState == .idle))
-        .disabled(!isStudyMode && {
+        .disabled({
+            if onStudyTap != nil { return false }
             if !gameState.canAnswer { return true }
             if case .idle = gameState.answerState { return false }
             return true

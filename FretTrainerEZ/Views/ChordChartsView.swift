@@ -75,14 +75,18 @@ struct ChordChartsView: View {
 
     private var filtersRow: some View {
         VStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            let notes = Note.allCases
+            VStack(spacing: 6) {
                 HStack(spacing: 6) {
-                    ForEach(Note.allCases, id: \.self) { note in
-                        noteChip(note)
-                    }
+                    ForEach(notes.prefix(6), id: \.self) { noteChip($0) }
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 16)
+                HStack(spacing: 6) {
+                    ForEach(notes.dropFirst(6), id: \.self) { noteChip($0) }
+                    Spacer(minLength: 0)
+                }
             }
+            .padding(.horizontal, 16)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(ChordType.allCases) { type in

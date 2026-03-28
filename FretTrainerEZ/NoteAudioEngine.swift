@@ -1,18 +1,20 @@
 import AVFoundation
 
-/// Synthesizes plucked guitar note tones using the Karplus-Strong algorithm.
+/// Synthesizes plucked guitar note tones using extended Karplus-Strong synthesis.
 /// All audio is generated in code — no audio asset files.
 final class NoteAudioEngine {
-    private let engine     = AVAudioEngine()
-    private let playerNode = AVAudioPlayerNode()
-    private let format:    AVAudioFormat
-    private let sampleRate: Double = 44100
+    private let engine:      AVAudioEngine
+    private let stringNodes: [AVAudioPlayerNode]   // one node per string → strum rings out naturally
+    private let format:      AVAudioFormat
+    private let sampleRate:  Double = 44100
 
     /// Open-string MIDI notes: index 0 = low E (E2=40) … index 5 = high E (E4=64)
     private let openStringMidi = [40, 45, 50, 55, 59, 64]
 
     init() {
-        format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        engine      = AVAudioEngine()
+        format      = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        stringNodes = (0..<6).map { _ in AVAudioPlayerNode() }
         setupEngine()
     }
 
@@ -22,24 +24,23 @@ final class NoteAudioEngine {
         ensureRunning()
         let midi      = openStringMidi[string] + fret
         let frequency = Float(440.0 * pow(2.0, Double(midi - 69) / 12.0))
-        guard let buffer = makeKSBuffer(frequency: frequency) else { return }
-        playerNode.stop()
-        playerNode.scheduleBuffer(buffer, at: nil, options: .interrupts)
-        if !playerNode.isPlaying { playerNode.play() }
+        guard let buffer = makeKSBuffer(frequency: frequency, string: string) else { return }
+        let node = stringNodes[string]
+        node.stop()
+        node.scheduleBuffer(buffer, at: nil, options: .interrupts)
+        if !node.isPlaying { node.play() }
     }
 
     // MARK: - Setup
 
     private func setupEngine() {
-        // Build the graph but don't start yet — engine starts lazily on first play()
-        // so it doesn't conflict with the chromatic tuner's .record session.
-        engine.attach(playerNode)
-        engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+        for node in stringNodes {
+            engine.attach(node)
+            engine.connect(node, to: engine.mainMixerNode, format: format)
+        }
         engine.mainMixerNode.outputVolume = 0.7
     }
 
-    /// Ensures the audio session is set to .ambient and the engine is running.
-    /// Called before every play() so we recover cleanly after the tuner stops.
     private func ensureRunning() {
         if engine.isRunning { return }
         try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
@@ -47,12 +48,15 @@ final class NoteAudioEngine {
         try? engine.start()
     }
 
-    // MARK: - Karplus-Strong synthesis
+    // MARK: - Extended Karplus-Strong synthesis
 
-    private func makeKSBuffer(frequency: Float) -> AVAudioPCMBuffer? {
-        let sr         = Float(sampleRate)
-        let ksLen      = max(2, Int(sr / frequency))   // delay line length
-        let totalFrames = Int(sr * 1.5)                 // 1.5 s max sustain
+    private func makeKSBuffer(frequency: Float, string: Int) -> AVAudioPCMBuffer? {
+        let sr    = Float(sampleRate)
+        let ksLen = max(2, Int(sr / frequency))   // delay line length = one period
+
+        // Lower strings sustain longer than higher strings
+        let sustainSecs = 1.8 - Double(string) * 0.12   // 1.80 s (low E) → 1.08 s (high E)
+        let totalFrames = Int(sr * Float(sustainSecs))
 
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format,
                                             frameCapacity: AVAudioFrameCount(totalFrames))
@@ -60,24 +64,70 @@ final class NoteAudioEngine {
         buffer.frameLength = AVAudioFrameCount(totalFrames)
         let out = buffer.floatChannelData![0]
 
-        // Seed the delay line with white noise
-        var ks = [Float](repeating: 0, count: ksLen)
-        for i in 0..<ksLen { ks[i] = Float.random(in: -0.5...0.5) }
+        // Per-string timbre parameters
+        // t = 0 → low E (warm, slow decay)   t = 1 → high E (bright, faster decay)
+        let t: Float  = Float(string) / 5.0
+        let blend     = 0.500 - t * 0.055    // filter coefficient: 0.500 (dark) → 0.445 (bright)
+        let decay     = 0.9992 - t * 0.0025  // loop gain:  0.9992 (low E) → 0.9967 (high E)
+        let bodyMix   = 0.28   - t * 0.12    // body warmth: more on bass strings
 
-        // Average filter + gentle decay  (0.998 ≈ natural string damping)
-        for i in 0..<totalFrames {
-            let idx     =  i      % ksLen
-            let nextIdx = (i + 1) % ksLen
-            let v       = 0.5 * (ks[idx] + ks[nextIdx]) * 0.998
-            ks[idx]     = v
-            out[i]      = v
+        // --- Seed delay line with pick-position-filtered noise ---
+        // Picking 1/8 of the way along the string zeros harmonics 8, 16, 24 …
+        // This creates the characteristic nasal "plucked" brightness notch.
+        let pickPos = max(1, ksLen / 8)
+        var raw = [Float](repeating: 0, count: ksLen)
+        for i in 0..<ksLen { raw[i] = Float.random(in: -1.0...1.0) }
+
+        var ks = [Float](repeating: 0, count: ksLen)
+        for i in 0..<ksLen {
+            let j  = (i + ksLen - pickPos) % ksLen
+            ks[i]  = raw[i] - raw[j]
         }
 
-        // Fade out last 10 % to eliminate end-of-buffer click
+        // Normalise seed to ±0.5
+        if let peak = ks.map({ abs($0) }).max(), peak > 0 {
+            for i in 0..<ksLen { ks[i] = ks[i] / peak * 0.5 }
+        }
+
+        // --- Short pick-click transient (≈ 2 ms shaped noise) ---
+        let attackLen = max(1, Int(sr * 0.002))
+        for i in 0..<attackLen {
+            let env  = 1.0 - Float(i) / Float(attackLen)
+            out[i]   = Float.random(in: -1.0...1.0) * env * env * 0.25
+        }
+
+        // --- Karplus-Strong loop ---
+        var bodyState: Float = 0.0
+        for i in 0..<totalFrames {
+            let idx     = i      % ksLen
+            let nextIdx = (i + 1) % ksLen
+            let v       = (blend * ks[idx] + (1.0 - blend) * ks[nextIdx]) * decay
+            ks[idx]     = v
+
+            // One-pole body-warmth filter (subtle low-shelf resonance)
+            bodyState = bodyState * 0.96 + v * 0.04
+            let sample = v + bodyState * bodyMix
+
+            if i < attackLen {
+                out[i] += sample * 0.85   // blend KS tone into the attack click
+            } else {
+                out[i]  = sample
+            }
+        }
+
+        // --- Peak-normalise to 0.75 ---
+        var maxSample: Float = 0.0
+        for i in 0..<totalFrames { if abs(out[i]) > maxSample { maxSample = abs(out[i]) } }
+        if maxSample > 0 {
+            let scale = min(0.75 / maxSample, 2.0)
+            for i in 0..<totalFrames { out[i] *= scale }
+        }
+
+        // --- Fade out last 10 % to eliminate end-of-buffer click ---
         let fadeStart = Int(Float(totalFrames) * 0.9)
         for i in fadeStart..<totalFrames {
-            let t = Float(i - fadeStart) / Float(totalFrames - fadeStart)
-            out[i] *= 1.0 - t
+            let fade = Float(i - fadeStart) / Float(totalFrames - fadeStart)
+            out[i]  *= 1.0 - fade
         }
 
         return buffer

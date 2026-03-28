@@ -21,14 +21,15 @@
 		BB000003000000000000003A /* DrawerMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000003000000000000003B /* DrawerMenuView.swift */; };
 		BB000004000000000000004A /* CircleOfFifthsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000004000000000000004B /* CircleOfFifthsView.swift */; };
 		BB000005000000000000005A /* ChordChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000005000000000000005B /* ChordChartsView.swift */; };
+		CC000001000000000000001A /* NoteAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001000000000000001B /* NoteAudioEngine.swift */; };
+		CC000002000000000000002A /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002000000000000002B /* OnboardingView.swift */; };
+		CC000003000000000000003A /* TimedResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000003000000000000003B /* TimedResultView.swift */; };
 		BB000006000000000000006A /* ChromaticTunerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000006000000000000006B /* ChromaticTunerView.swift */; };
-		CC000001000000000000001A /* ScaleLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001000000000000001B /* ScaleLibrary.swift */; };
-		CC000002000000000000002A /* ScalesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002000000000000002B /* ScalesView.swift */; };
-		DD000001000000000000001A /* FretboardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000001B /* FretboardStyle.swift */; };
-		DD000002000000000000002A /* FretboardStyleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002000000000000002B /* FretboardStyleView.swift */; };
+		DD000001000000000000001A /* ScaleLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000001B /* ScaleLibrary.swift */; };
+		DD000002000000000000002A /* ScalesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002000000000000002B /* ScalesView.swift */; };
 		EE000001000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE000001000000000000001B /* SettingsView.swift */; };
-		FF000001000000000000001A /* NoteAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000001000000000000001B /* NoteAudioEngine.swift */; };
-		GG000001000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = GG000001000000000000001B /* Assets.xcassets */; };
+		FF000001000000000000001A /* FretboardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000001000000000000001B /* FretboardStyle.swift */; };
+		FF000002000000000000002A /* FretboardStyleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000002000000000000002B /* FretboardStyleView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,14 +59,17 @@
 		BB000003000000000000003B /* DrawerMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawerMenuView.swift; sourceTree = "<group>"; };
 		BB000004000000000000004B /* CircleOfFifthsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleOfFifthsView.swift; sourceTree = "<group>"; };
 		BB000005000000000000005B /* ChordChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordChartsView.swift; sourceTree = "<group>"; };
+		CC000001000000000000001B /* NoteAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAudioEngine.swift; sourceTree = "<group>"; };
+		CC000002000000000000002B /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		CC000003000000000000003B /* TimedResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedResultView.swift; sourceTree = "<group>"; };
 		BB000006000000000000006B /* ChromaticTunerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaticTunerView.swift; sourceTree = "<group>"; };
-		CC000001000000000000001B /* ScaleLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaleLibrary.swift; sourceTree = "<group>"; };
-		CC000002000000000000002B /* ScalesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScalesView.swift; sourceTree = "<group>"; };
-		DD000001000000000000001B /* FretboardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FretboardStyle.swift; sourceTree = "<group>"; };
-		DD000002000000000000002B /* FretboardStyleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FretboardStyleView.swift; sourceTree = "<group>"; };
+		DD000001000000000000001B /* ScaleLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaleLibrary.swift; sourceTree = "<group>"; };
+		DD000002000000000000002B /* ScalesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScalesView.swift; sourceTree = "<group>"; };
 		EE000001000000000000001B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		FF000001000000000000001B /* NoteAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAudioEngine.swift; sourceTree = "<group>"; };
-		GG000001000000000000001B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FF000001000000000000001B /* FretboardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FretboardStyle.swift; sourceTree = "<group>"; };
+		FF000002000000000000002B /* FretboardStyleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FretboardStyleView.swift; sourceTree = "<group>"; };
+		AA00000A0000000000000010 /* FretTrainerEZ.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FretTrainerEZ.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA00000B0000000000000010 /* FretTrainerEZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FretTrainerEZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,8 +95,7 @@
 			children = (
 				AA000001000000000000001B /* FretTrainerEZApp.swift */,
 				AA000002000000000000002B /* ContentView.swift */,
-				FF000001000000000000001B /* NoteAudioEngine.swift */,
-				GG000001000000000000001B /* Assets.xcassets */,
+				CC000001000000000000001B /* NoteAudioEngine.swift */,
 				AA00000D0000000000000010 /* Models */,
 				AA00000E0000000000000010 /* Views */,
 				AA00000F0000000000000010 /* Game */,
@@ -108,8 +111,8 @@
 				AA000005000000000000005B /* Fretboard.swift */,
 				BB000001000000000000001B /* ChordLibrary.swift */,
 				BB000002000000000000002B /* MusicTheory.swift */,
-				CC000001000000000000001B /* ScaleLibrary.swift */,
-				DD000001000000000000001B /* FretboardStyle.swift */,
+				DD000001000000000000001B /* ScaleLibrary.swift */,
+				FF000001000000000000001B /* FretboardStyle.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -123,9 +126,11 @@
 				BB000004000000000000004B /* CircleOfFifthsView.swift */,
 				BB000005000000000000005B /* ChordChartsView.swift */,
 				BB000006000000000000006B /* ChromaticTunerView.swift */,
-				CC000002000000000000002B /* ScalesView.swift */,
-				DD000002000000000000002B /* FretboardStyleView.swift */,
+				DD000002000000000000002B /* ScalesView.swift */,
 				EE000001000000000000001B /* SettingsView.swift */,
+				FF000002000000000000002B /* FretboardStyleView.swift */,
+				CC000002000000000000002B /* OnboardingView.swift */,
+				CC000003000000000000003B /* TimedResultView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -268,13 +273,15 @@
 				BB000003000000000000003A /* DrawerMenuView.swift in Sources */,
 				BB000004000000000000004A /* CircleOfFifthsView.swift in Sources */,
 				BB000005000000000000005A /* ChordChartsView.swift in Sources */,
+				CC000001000000000000001A /* NoteAudioEngine.swift in Sources */,
+				CC000002000000000000002A /* OnboardingView.swift in Sources */,
+				CC000003000000000000003A /* TimedResultView.swift in Sources */,
 				BB000006000000000000006A /* ChromaticTunerView.swift in Sources */,
-				CC000001000000000000001A /* ScaleLibrary.swift in Sources */,
-				CC000002000000000000002A /* ScalesView.swift in Sources */,
-				DD000001000000000000001A /* FretboardStyle.swift in Sources */,
-				DD000002000000000000002A /* FretboardStyleView.swift in Sources */,
+				DD000001000000000000001A /* ScaleLibrary.swift in Sources */,
+				DD000002000000000000002A /* ScalesView.swift in Sources */,
 				EE000001000000000000001A /* SettingsView.swift in Sources */,
-				FF000001000000000000001A /* NoteAudioEngine.swift in Sources */,
+				FF000001000000000000001A /* FretboardStyle.swift in Sources */,
+				FF000002000000000000002A /* FretboardStyleView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

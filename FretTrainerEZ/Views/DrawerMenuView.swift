@@ -84,13 +84,13 @@ struct DrawerMenuView: View {
                 navigate(to: .scales)
             }
 
-            menuItem(icon: "paintpalette", title: "Fretboard Style", subtitle: "Change the wood theme") {
+            menuItem(icon: "paintpalette.fill", title: "Fretboard Style", subtitle: "5 wood themes") {
                 navigate(to: .fretboardStyle)
             }
 
             Divider().background(Color.white.opacity(0.1))
 
-            menuItem(icon: "gearshape.fill", title: "Settings", subtitle: "Haptics · Note names") {
+            menuItem(icon: "gearshape.fill", title: "Settings", subtitle: "Sound, haptics, note names") {
                 navigate(to: .settings)
             }
 
