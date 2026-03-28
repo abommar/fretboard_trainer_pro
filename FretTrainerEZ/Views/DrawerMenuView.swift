@@ -3,6 +3,7 @@ import SwiftUI
 enum AppScreen: Identifiable {
     case circleOfFifths
     case chordCharts
+    case songGenerator
     case chromaticTuner
     case scales
     case fretboardStyle
@@ -12,6 +13,7 @@ enum AppScreen: Identifiable {
         switch self {
         case .circleOfFifths:  return "circleOfFifths"
         case .chordCharts:     return "chordCharts"
+        case .songGenerator:   return "songGenerator"
         case .chromaticTuner:  return "chromaticTuner"
         case .scales:          return "scales"
         case .fretboardStyle:  return "fretboardStyle"
@@ -74,6 +76,10 @@ struct DrawerMenuView: View {
 
             menuItem(icon: "music.note.list", title: "Chord Charts", subtitle: "Common voicings") {
                 navigate(to: .chordCharts)
+            }
+
+            menuItem(icon: "square.grid.2x2.fill", title: "Chord Jam", subtitle: "Tap to add chords") {
+                navigate(to: .songGenerator)
             }
 
             menuItem(icon: "tuningfork", title: "Chromatic Tuner", subtitle: "Tune by ear") {

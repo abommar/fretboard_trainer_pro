@@ -64,6 +64,7 @@ struct ContentView: View {
             switch screen {
             case .circleOfFifths:  CircleOfFifthsView()
             case .chordCharts:     ChordChartsView()
+            case .songGenerator:   SongGeneratorView()
             case .chromaticTuner:  ChromaticTunerView()
             case .scales:          ScalesView()
             case .fretboardStyle:  FretboardStyleView(selectedStyle: Binding(

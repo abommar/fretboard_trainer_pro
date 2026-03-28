@@ -338,3 +338,286 @@ struct ChordDiagramView: View {
         .padding(.top, 18)
     }
 }
+
+// MARK: - Chord Jam
+
+private struct SongChordPreset: Identifiable {
+    let id: String
+    let title: String
+    let voicing: ChordVoicing
+}
+
+private struct ArrangedChord: Identifiable {
+    let id = UUID()
+    let presetID: String
+}
+
+struct SongGeneratorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @AppStorage("useFlats") private var useFlats: Bool = false
+
+    @State private var audioEngine = NoteAudioEngine()
+    @State private var arrangement: [ArrangedChord] = []
+
+    private let accent = Color(hex: "#E94560")
+    private let bg = Color(hex: "#1A1A2E")
+    private let cardBg = Color(hex: "#16213E")
+
+    private var isLandscape: Bool { verticalSizeClass == .compact }
+
+    private var presets: [SongChordPreset] {
+        func preset(_ root: Note, _ type: ChordType) -> SongChordPreset {
+            let voicing = ChordLibrary.voicings(root: root, type: type).first!
+            let name = "\(useFlats ? root.flatName : root.sharpName)\(type.suffix)"
+            return SongChordPreset(id: "\(root.rawValue)-\(type.rawValue)", title: name, voicing: voicing)
+        }
+
+        return [
+            preset(.C, .major),
+            preset(.G, .major),
+            preset(.D, .major),
+            preset(.A, .major),
+            preset(.E, .major),
+            preset(.F, .major),
+            preset(.A, .minor),
+            preset(.E, .minor),
+            preset(.D, .minor),
+            preset(.B, .minor),
+            preset(.C, .dominant7),
+            preset(.G, .dominant7),
+            preset(.D, .dominant7),
+            preset(.A, .dominant7),
+            preset(.E, .dominant7),
+            preset(.F, .major7),
+            preset(.G, .major7),
+            preset(.C, .major7),
+            preset(.A, .minor7),
+            preset(.D, .minor7),
+        ]
+    }
+
+    private var presetByID: [String: SongChordPreset] {
+        Dictionary(uniqueKeysWithValues: presets.map { ($0.id, $0) })
+    }
+
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+            GeometryReader { geo in
+                VStack(spacing: 0) {
+                    navBar
+                    Divider().background(Color.white.opacity(0.08))
+                    if isLandscape {
+                        landscapeBody
+                    } else {
+                        portraitBody(contentHeight: geo.size.height)
+                    }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func portraitBody(contentHeight: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            arrangementPanel
+                .frame(height: contentHeight * 0.44)
+            Divider().background(Color.white.opacity(0.08))
+            palettePanel
+        }
+    }
+
+    private var landscapeBody: some View {
+        HStack(spacing: 0) {
+            arrangementPanel
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Divider().background(Color.white.opacity(0.08))
+            palettePanel
+                .frame(width: 330)
+                .frame(maxHeight: .infinity)
+        }
+    }
+
+    private var navBar: some View {
+        HStack {
+            Button(action: { dismiss() }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("Back")
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(accent)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Text("Chord Jam")
+                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                .foregroundColor(.white)
+
+            Spacer()
+
+            Button("Clear") { arrangement.removeAll() }
+                .buttonStyle(.plain)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(arrangement.isEmpty ? .white.opacity(0.35) : accent)
+                .disabled(arrangement.isEmpty)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(cardBg)
+    }
+
+    private var arrangementPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            let columns = [GridItem(.adaptive(minimum: 86), spacing: 8, alignment: .leading)]
+            Text("YOUR PROGRESSION")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.white.opacity(0.45))
+                .tracking(1.2)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+                    ForEach(Array(arrangement.enumerated()), id: \.element.id) { idx, item in
+                        if let preset = presetByID[item.presetID] {
+                            arrangedChip(preset: preset, item: item)
+                                .dropDestination(for: String.self) { items, _ in
+                                    handleDrop(items, targetIndex: idx)
+                                }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .dropDestination(for: String.self) { items, _ in
+                handleDrop(items, targetIndex: arrangement.count)
+            }
+
+            if arrangement.isEmpty {
+                VStack(spacing: 6) {
+                    Image(systemName: "hand.draw")
+                        .font(.system(size: 26))
+                        .foregroundColor(.white.opacity(0.25))
+                    Text("Tap to add chords and build your song")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.bottom, 24)
+            }
+        }
+        .background(cardBg.opacity(0.5))
+    }
+
+    private var palettePanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("20 COMMON CHORDS")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.white.opacity(0.45))
+                .tracking(1.2)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                    ForEach(presets) { preset in
+                        paletteChip(preset: preset)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            }
+        }
+        .background(cardBg.opacity(0.35))
+    }
+
+    private func arrangedChip(preset: SongChordPreset, item: ArrangedChord) -> some View {
+        Button(action: { playChord(preset.voicing) }) {
+            HStack(spacing: 6) {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 9))
+                Text(preset.title)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(hex: "#2A2A6A"))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(accent.opacity(0.6), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .draggable("arranged:\(item.id.uuidString)")
+        .contextMenu {
+            Button("Remove") {
+                arrangement.removeAll { $0.id == item.id }
+            }
+        }
+    }
+
+    private func paletteChip(preset: SongChordPreset) -> some View {
+        Text(preset.title)
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(cardBg)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                    )
+            )
+            .draggable("preset:\(preset.id)")
+            .onTapGesture {
+                arrangement.append(ArrangedChord(presetID: preset.id))
+            }
+    }
+
+    private func handleDrop(_ payloads: [String], targetIndex: Int) -> Bool {
+        var insertIndex = max(0, min(targetIndex, arrangement.count))
+
+        for payload in payloads {
+            if payload.hasPrefix("arranged:") {
+                let raw = String(payload.dropFirst("arranged:".count))
+                guard let id = UUID(uuidString: raw),
+                      let currentIndex = arrangement.firstIndex(where: { $0.id == id }) else { continue }
+
+                let moving = arrangement.remove(at: currentIndex)
+                if currentIndex < insertIndex { insertIndex -= 1 }
+                arrangement.insert(moving, at: max(0, min(insertIndex, arrangement.count)))
+                insertIndex += 1
+            } else if payload.hasPrefix("preset:") {
+                let presetID = String(payload.dropFirst("preset:".count))
+                guard presetByID[presetID] != nil else { continue }
+                arrangement.insert(ArrangedChord(presetID: presetID), at: max(0, min(insertIndex, arrangement.count)))
+                insertIndex += 1
+            }
+        }
+        return true
+    }
+
+    private func playChord(_ voicing: ChordVoicing) {
+        for (index, fret) in voicing.frets.enumerated() {
+            guard let fret else { continue }
+            let delay = Double(index) * 0.045
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                audioEngine.play(string: index, fret: fret)
+            }
+        }
+    }
+}

@@ -1,7 +1,7 @@
 # FretTrainerEZ — Claude Context
 
 ## What This Is
-An iOS guitar fretboard trainer app built in Swift/SwiftUI. All feature phases complete. Two game modes, study mode, sound effects, and six music tool screens. Next step: TestFlight.
+An iOS guitar fretboard trainer app built in Swift/SwiftUI. Current build includes three game modes, study mode, sound effects, and seven music tool screens (including Chord Jam). Next step: TestFlight.
 
 ## Hard Constraints (Never Violate)
 - **No third-party dependencies.** Apple frameworks only (SwiftUI, SwiftData, Foundation, CoreHaptics, AVFoundation). No SPM packages, no CocoaPods.
@@ -13,7 +13,7 @@ An iOS guitar fretboard trainer app built in Swift/SwiftUI. All feature phases c
 - Xcode 26.3 at `/Applications/Xcode.app` (use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` prefix for all xcrun/xcodebuild — xcode-select may point to CLI tools)
 - `@Observable` (Observation framework) for state — not `ObservableObject`
 - SwiftData imported but not yet used (reserved for future persistence)
-- Simulator bundle ID: `com.frettrainerez.app`
+- Simulator bundle ID: `com.dontfretaboutitai.frettrainerez`
 
 ## Project Structure
 ```
@@ -43,15 +43,16 @@ FretTrainerEZ/
 │   │                               #   style: FretboardStyle, onFretTap
 │   ├── NoteAnswerButtonsView.swift # 12-button grid; useFlats @AppStorage; study mode: onStudyTap + studySelectedNote
 │   ├── DrawerMenuView.swift        # Slide-out hamburger drawer + AppScreen enum
-│   │                               #   (.circleOfFifths, .chordCharts, .chromaticTuner, .scales, .fretboardStyle, .settings)
+│   │                               #   (.circleOfFifths, .chordCharts, .songGenerator, .chromaticTuner, .scales, .fretboardStyle, .settings)
 │   ├── CircleOfFifthsView.swift    # Canvas-drawn circle; orientation-aware (GeometryReader as body root):
 │   │                               #   portrait = circle + detail card stacked; landscape = circle left / card right.
 │   │                               #   Tap a key → 3 adjacent wedges highlight by chord function (green=tonic,
 │   │                               #   blue=subdominant, orange=dominant); other 9 wedges dim.
 │   │                               #   Detail card: diatonic chord pills (I–vii°) + 4 common progressions with
 │   │                               #   actual chord names for the selected key.
-│   ├── ChordChartsView.swift       # Left/right split: left=scrollable chord diagrams, right=theory panel
-│   │                               #   (chord name + mood subtitle, NOTES pills, INTERVALS side-by-side)
+│   ├── ChordChartsView.swift       # Chord tools:
+│   │                               #   - Chord Charts: left/right split (diagrams + theory panel)
+│   │                               #   - Chord Jam: progression builder with tap-to-add + drag-reorder + tap-to-play
 │   ├── ChromaticTunerView.swift    # Chromatic tuner: PitchDetector struct + TunerEngine @Observable + UI.
 │   │                               #   Orientation-aware (GeometryReader as body root): portrait=stacked,
 │   │                               #   landscape=two-column. TunerEngine: all private audio vars are
@@ -97,6 +98,7 @@ FretTrainerEZTests/
 ## Game Modes
 - **Name That Note**: fret is highlighted, user taps correct note name from 12-button grid; note tone plays on each new question (when sound on)
 - **Find The Fret**: note name shown, user taps ALL positions of that note on the fretboard; each correct tap stays highlighted green and plays its tone (when sound on); wrong taps flash red 0.6s; round advances when `required.isSubset(of: foundFrets)`; skip button skips to a different note
+- **Memory Challenge**: fretboard briefly flashes target positions, then clears; user taps remembered positions to complete the round
 - `FretPosition: Hashable` struct used for multi-tap tracking; `foundFrets: Set<FretPosition>` in GameState
 - `questionID: UUID` on GameState regenerated each `nextQuestion()` — ContentView uses `.onChange(of: gameState.questionID)` to trigger audio in Name That Note
 - Best timed scores persisted via UserDefaults, key: `"best_\(gameMode.rawValue)_\(timerDuration)"`
@@ -117,14 +119,15 @@ FretTrainerEZTests/
 - Gated by `soundEnabled` @AppStorage in ContentView before calling `audioEngine.play()`
 
 ## Hamburger Menu & Music Tool Screens
-- `AppScreen` enum (in DrawerMenuView.swift): `.circleOfFifths`, `.chordCharts`, `.chromaticTuner`, `.scales`, `.fretboardStyle`, `.settings` — conforms to `Identifiable`
+- `AppScreen` enum (in DrawerMenuView.swift): `.circleOfFifths`, `.chordCharts`, `.songGenerator`, `.chromaticTuner`, `.scales`, `.fretboardStyle`, `.settings` — conforms to `Identifiable`
 - Drawer slides in from left with spring animation; scrim tap-to-close; items compacted (10pt vertical padding, 13pt font)
 - ContentView presents screens via `.fullScreenCover(item: $activeScreen)`
 - Navigation back from each screen uses `@Environment(\.dismiss)`
 - **CircleOfFifthsView**: Diatonic chord highlighting — tap a key to highlight IV/I/V (outer) and ii/vi/iii (inner) by chord function color. Detail card shows all 7 diatonic chords as color-coded pills + 4 common progressions with real chord names. Orientation-aware layout.
 - **ChordChartsView**: Split layout — left panel (44% width, max 175pt) scrollable chord diagrams; right panel theory breakdown: chord name + mood subtitle, NOTES pills + INTERVALS list side-by-side
+- **Chord Jam**: progression playground with 20 common chord chips; tap to add, drag to reorder, tap arranged chord to strum playback; supports portrait and landscape layouts
 - **ChordDiagramView**: wood background, fret wires, string lines, red finger dots, X/O above nut; `baseFret` label for barre positions
-- **ChromaticTunerView**: Mic-based pitch detection, large note name + cents meter needle, tuning reference row. Orientation-aware (portrait=stacked, landscape=two-column). Back button uses dismiss only; cleanup via `.onDisappear { engine.stop() }`.
+- **ChromaticTunerView**: Mic-based pitch detection, large note name + cents meter needle, tuning reference row. Orientation-aware (portrait=stacked, landscape=two-column). Custom nav bar accounts for safe-area top inset; compact landscape keeps controls visible via adaptive scrolling. Back button uses dismiss only; cleanup via `.onDisappear { engine.stop() }`.
 - **ScalesView**: Landscape-only scale explorer; portrait shows rotate prompt; 4-column root grid + `.wheel` scale picker; fretboard with root (red) and scale tone (blue) dots; respects `useFlats`
 - **FretboardStyleView**: Full-screen picker, each row has Canvas mini-preview (board gradient, nut, frets, strings, pearl dots at frets 2 & 4)
 - **SettingsView**: Three sections — Gameplay (haptics), Sound (effects), Display (note names + live accidental preview)
@@ -218,7 +221,6 @@ These items are needed before the first TestFlight build:
 - [ ] **App Store Connect** — create app record, add internal testers (no review needed for internal), or add external testers (requires Beta App Review)
 
 ## Roadmap / What's NOT Built Yet
-- No onboarding flow
 - Phase 5: Extended chord voicings (9th/11th/13th chord types in ChordLibrary)
 - Chord library has all 12 roots × 5 chord types + limited sus2/sus4
 - Tuner untested on simulator (no real mic) — test on device only

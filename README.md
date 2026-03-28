@@ -1,14 +1,16 @@
 # FretTrainerEZ
 
-An iOS app for learning guitar fretboard notes through interactive quizzes. Built with SwiftUI, targeting iOS 17+.
+An iOS app for learning guitar fretboard notes through interactive gameplay and built-in music tools. Built with SwiftUI, targeting iOS 17+.
 
 ## Features
 
-- **Visual fretboard** — Scrollable 22-fret guitar neck drawn entirely in code. Wood-toned background, graduated string thicknesses, pearl inlay dots, and metallic fret wires.
-- **Name That Note** — A random position is highlighted on the fretboard; tap the correct note from 12 answer buttons.
-- **Instant feedback** — Green/red flash on answer, correct note revealed on wrong guesses, CoreHaptics feedback.
-- **Session score** — Running correct/total/percentage tally with a reset button.
-- **Fully offline** — No network access, no third-party dependencies. Works in airplane mode from first launch.
+- **Visual fretboard** — Scrollable 22-fret guitar neck drawn entirely in code, with multiple wood themes.
+- **Three game modes** — Name That Note, Find The Fret, and Memory Challenge.
+- **Timed + practice play** — Difficulty ranges, timer durations, and score tracking.
+- **Study mode** — Tap/preview notes directly on the fretboard with optional sound.
+- **Music tools drawer** — Circle of Fifths, Chord Charts, Chord Jam, Chromatic Tuner, Scale Explorer, Fretboard Style, Settings.
+- **Chord Jam** — Tap to add from 20 common chords, arrange progressions, and tap chords to hear strummed playback.
+- **Fully offline** — No network calls or third-party dependencies.
 
 ## Requirements
 
@@ -26,24 +28,19 @@ open FretTrainerEZ.xcodeproj
 
 Build and run on a simulator or device with **Cmd + R**. Run unit tests with **Cmd + U**.
 
-## Project Structure
+## Project Structure (High Level)
 
 ```
 FretTrainerEZ/
-├── Models/
-│   ├── Note.swift           # 12-note chromatic enum with sharp/flat display
-│   ├── GuitarTuning.swift   # Tuning struct (default: standard EADGBE)
-│   └── Fretboard.swift      # Note lookup and position search logic
-├── Game/
-│   └── GameState.swift      # @Observable game engine, scoring, haptics
-├── Views/
-│   ├── FretboardView.swift       # Rendered fretboard with highlight circle
-│   └── NoteAnswerButtonsView.swift  # 12-button answer grid
-├── ContentView.swift         # Root view
+├── Models/                   # Notes, tunings, fretboard math, chord/scale/music theory libs
+├── Game/                     # Core game state + modes + timer + memory logic
+├── Views/                    # Main gameplay + all drawer tool screens
+├── NoteAudioEngine.swift     # Synthesized plucked-string playback
+├── ContentView.swift         # Root gameplay + drawer routing
 └── FretTrainerEZApp.swift    # App entry point
 
 FretTrainerEZTests/
-└── FretTrainerEZTests.swift  # Unit tests for music theory logic
+└── ...                       # Unit tests for gameplay, pitch detection, and theory models
 ```
 
 ## How It Works
@@ -58,9 +55,7 @@ func note(string: Int, fret: Int) -> Note {
 
 `GameState` picks a random string/fret, computes the correct note, handles answer submission, and auto-advances to the next question after a short delay.
 
-## Roadmap
+## Next
 
-- **Phase 2** — "Find The Fret" inverse mode (given a note, tap its location)
-- **Phase 3** — Fretboard style picker (Les Paul, Strat, etc.)
-- **Phase 4** — Timed challenge modes
-- **Phase 5** — Alternate tunings and instruments
+- Expand advanced chord vocabulary (9th/11th/13th voicings)
+- Add deeper progression/song practice workflows
