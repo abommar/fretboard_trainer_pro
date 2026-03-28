@@ -347,9 +347,46 @@ private struct SongChordPreset: Identifiable {
     let voicing: ChordVoicing
 }
 
-private struct ArrangedChord: Identifiable {
-    let id = UUID()
+struct ArrangedChord: Identifiable, Equatable {
+    let id: UUID
     let presetID: String
+
+    init(id: UUID = UUID(), presetID: String) {
+        self.id = id
+        self.presetID = presetID
+    }
+}
+
+enum ChordJamArrangementEngine {
+    static func apply(
+        arrangement: [ArrangedChord],
+        payloads: [String],
+        targetIndex: Int,
+        validPresetIDs: Set<String>
+    ) -> [ArrangedChord] {
+        var updated = arrangement
+        var insertIndex = max(0, min(targetIndex, updated.count))
+
+        for payload in payloads {
+            if payload.hasPrefix("arranged:") {
+                let raw = String(payload.dropFirst("arranged:".count))
+                guard let id = UUID(uuidString: raw),
+                      let currentIndex = updated.firstIndex(where: { $0.id == id }) else { continue }
+
+                let moving = updated.remove(at: currentIndex)
+                if currentIndex < insertIndex { insertIndex -= 1 }
+                updated.insert(moving, at: max(0, min(insertIndex, updated.count)))
+                insertIndex += 1
+            } else if payload.hasPrefix("preset:") {
+                let presetID = String(payload.dropFirst("preset:".count))
+                guard validPresetIDs.contains(presetID) else { continue }
+                updated.insert(ArrangedChord(presetID: presetID), at: max(0, min(insertIndex, updated.count)))
+                insertIndex += 1
+            }
+        }
+
+        return updated
+    }
 }
 
 struct SongGeneratorView: View {
@@ -589,25 +626,12 @@ struct SongGeneratorView: View {
     }
 
     private func handleDrop(_ payloads: [String], targetIndex: Int) -> Bool {
-        var insertIndex = max(0, min(targetIndex, arrangement.count))
-
-        for payload in payloads {
-            if payload.hasPrefix("arranged:") {
-                let raw = String(payload.dropFirst("arranged:".count))
-                guard let id = UUID(uuidString: raw),
-                      let currentIndex = arrangement.firstIndex(where: { $0.id == id }) else { continue }
-
-                let moving = arrangement.remove(at: currentIndex)
-                if currentIndex < insertIndex { insertIndex -= 1 }
-                arrangement.insert(moving, at: max(0, min(insertIndex, arrangement.count)))
-                insertIndex += 1
-            } else if payload.hasPrefix("preset:") {
-                let presetID = String(payload.dropFirst("preset:".count))
-                guard presetByID[presetID] != nil else { continue }
-                arrangement.insert(ArrangedChord(presetID: presetID), at: max(0, min(insertIndex, arrangement.count)))
-                insertIndex += 1
-            }
-        }
+        arrangement = ChordJamArrangementEngine.apply(
+            arrangement: arrangement,
+            payloads: payloads,
+            targetIndex: targetIndex,
+            validPresetIDs: Set(presetByID.keys)
+        )
         return true
     }
 

@@ -778,3 +778,68 @@ final class GameStateTests: XCTestCase {
         XCTAssertFalse(gs.isTimeUp)
     }
 }
+
+// MARK: - Chord Jam Arrangement Tests
+
+final class ChordJamArrangementEngineTests: XCTestCase {
+
+    func testInsertPresetPayloadAtTargetIndex() {
+        let a = ArrangedChord(id: UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!, presetID: "0-Major")
+        let b = ArrangedChord(id: UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!, presetID: "7-Major")
+
+        let result = ChordJamArrangementEngine.apply(
+            arrangement: [a, b],
+            payloads: ["preset:9-major7"],
+            targetIndex: 1,
+            validPresetIDs: ["0-Major", "7-Major", "9-major7"]
+        )
+
+        XCTAssertEqual(result.count, 3)
+        XCTAssertEqual(result[0].presetID, "0-Major")
+        XCTAssertEqual(result[1].presetID, "9-major7")
+        XCTAssertEqual(result[2].presetID, "7-Major")
+    }
+
+    func testReorderExistingChordForwardAdjustsIndexCorrectly() {
+        let a = ArrangedChord(id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!, presetID: "A")
+        let b = ArrangedChord(id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!, presetID: "B")
+        let c = ArrangedChord(id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!, presetID: "C")
+
+        let result = ChordJamArrangementEngine.apply(
+            arrangement: [a, b, c],
+            payloads: ["arranged:\(a.id.uuidString)"],
+            targetIndex: 2,
+            validPresetIDs: ["A", "B", "C"]
+        )
+
+        XCTAssertEqual(result.map(\.presetID), ["B", "A", "C"])
+    }
+
+    func testReorderExistingChordBackward() {
+        let a = ArrangedChord(id: UUID(uuidString: "44444444-4444-4444-4444-444444444444")!, presetID: "A")
+        let b = ArrangedChord(id: UUID(uuidString: "55555555-5555-5555-5555-555555555555")!, presetID: "B")
+        let c = ArrangedChord(id: UUID(uuidString: "66666666-6666-6666-6666-666666666666")!, presetID: "C")
+
+        let result = ChordJamArrangementEngine.apply(
+            arrangement: [a, b, c],
+            payloads: ["arranged:\(c.id.uuidString)"],
+            targetIndex: 0,
+            validPresetIDs: ["A", "B", "C"]
+        )
+
+        XCTAssertEqual(result.map(\.presetID), ["C", "A", "B"])
+    }
+
+    func testIgnoresInvalidPresetPayload() {
+        let a = ArrangedChord(id: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!, presetID: "A")
+
+        let result = ChordJamArrangementEngine.apply(
+            arrangement: [a],
+            payloads: ["preset:not-real"],
+            targetIndex: 1,
+            validPresetIDs: ["A", "B"]
+        )
+
+        XCTAssertEqual(result, [a])
+    }
+}
