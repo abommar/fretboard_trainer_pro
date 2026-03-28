@@ -172,21 +172,6 @@ struct FretboardView: View {
         .offset(x: x - 8, y: y - 8)
     }
 
-    // MARK: - Scale highlight dots
-    @ViewBuilder
-    private var scaleHighlightDots: some View {
-        ForEach(Array(scaleHighlights.enumerated()), id: \.offset) { _, pair in
-            let (pos, color) = pair
-            let x = fretX(fret: pos.fret)
-            let y = stringY(string: pos.string)
-            Circle()
-                .fill(color)
-                .frame(width: 20, height: 20)
-                .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 1.5))
-                .position(x: x, y: y)
-        }
-    }
-
     // MARK: - Study mode note labels
     private var noteLabelsOverlay: some View {
         let pillW: CGFloat = 26
@@ -222,21 +207,6 @@ struct FretboardView: View {
         // Notes in the yellow/green/cyan band (roughly hue 0.15–0.55) are light enough to need dark text
         let hue = Double(note.rawValue) / 12.0
         return (hue > 0.14 && hue < 0.56) ? Color.black.opacity(0.85) : .white
-    }
-
-    // MARK: - Found positions (persistent green dots in Find The Fret)
-    @ViewBuilder
-    private var foundPositionCircles: some View {
-        ForEach(foundPositions, id: \.self) { pos in
-            let x = fretX(fret: pos.fret)
-            let y = stringY(string: pos.string)
-            Circle()
-                .fill(Color.green)
-                .frame(width: 22, height: 22)
-                .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 2))
-                .position(x: x, y: y)
-                .transition(.scale.combined(with: .opacity))
-        }
     }
 
     // MARK: - Highlight circle

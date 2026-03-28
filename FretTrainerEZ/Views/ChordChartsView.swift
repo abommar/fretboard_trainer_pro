@@ -1,11 +1,7 @@
 import SwiftUI
 
 struct ChordChartsView: View {
-    let audioEngine: NoteAudioEngine
-
     @Environment(\.dismiss) private var dismiss
-
-    @AppStorage("soundEnabled") private var soundEnabled: Bool = false
 
     @State private var selectedRoot: Note = .C
     @State private var selectedType: ChordType = .major
@@ -79,7 +75,6 @@ struct ChordChartsView: View {
 
     private var filtersRow: some View {
         VStack(spacing: 8) {
-            // Root note picker — two fixed rows of 6 so all 12 are always visible
             let notes = Note.allCases
             VStack(spacing: 6) {
                 HStack(spacing: 6) {
@@ -92,8 +87,6 @@ struct ChordChartsView: View {
                 }
             }
             .padding(.horizontal, 16)
-
-            // Chord type picker (scrollable — 7 types, fits most screens)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(ChordType.allCases) { type in
@@ -138,42 +131,29 @@ struct ChordChartsView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Strum
+    // MARK: - Left: diagram list
 
-    private func strumChord(_ voicing: ChordVoicing) {
-        for (stringIdx, fret) in voicing.frets.enumerated() {
-            guard let fret else { continue }
-            let delay = Double(stringIdx) * 0.08
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                audioEngine.play(string: stringIdx, fret: fret)
-            }
-        }
-    }
-
-    // MARK: - Chord content
-
-    @ViewBuilder
-    private var chordContent: some View {
-        if voicings.isEmpty {
-            VStack(spacing: 12) {
-                Spacer()
-                Image(systemName: "music.note.list")
-                    .font(.system(size: 40))
-                    .foregroundColor(.white.opacity(0.15))
-                Text("No voicings in library yet")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.35))
-                Spacer()
-            }
-        } else {
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                    ForEach(voicings) { voicing in
-                        ChordDiagramView(voicing: voicing) {
-                            guard soundEnabled else { return }
-                            strumChord(voicing)
+    private var diagramList: some View {
+        Group {
+            if voicings.isEmpty {
+                VStack(spacing: 10) {
+                    Spacer()
+                    Image(systemName: "music.note.list")
+                        .font(.system(size: 32))
+                        .foregroundColor(.white.opacity(0.15))
+                    Text("No voicings yet")
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.35))
+                    Spacer()
+                }
+            } else {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        ForEach(voicings) { voicing in
+                            ChordDiagramView(voicing: voicing)
                         }
                     }
+                    .padding(14)
                 }
             }
         }
@@ -261,7 +241,6 @@ struct ChordChartsView: View {
 
 struct ChordDiagramView: View {
     let voicing: ChordVoicing
-    var onPlay: (() -> Void)? = nil
 
     private let stringCount = 6
     private let fretRows    = 5
@@ -274,22 +253,9 @@ struct ChordDiagramView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            HStack {
-                Text(voicing.name)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Spacer()
-                if let onPlay {
-                    Button(action: onPlay) {
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(Color(hex: "#E94560"))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            chordTonesRow
+            Text(voicing.name)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
 
             diagramBody
                 .frame(height: CGFloat(fretRows) * cellH + nutH + 24)
@@ -302,22 +268,6 @@ struct ChordDiagramView: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 10).fill(cardBg))
-    }
-
-    private var chordTonesRow: some View {
-        HStack(spacing: 4) {
-            ForEach(voicing.chordTones, id: \.rawValue) { note in
-                let hue = Double(note.rawValue) / 12.0
-                let bg = Color(hue: hue, saturation: 0.80, brightness: 0.95)
-                let fg: Color = (hue > 0.14 && hue < 0.56) ? Color.black.opacity(0.85) : .white
-                Text(note.sharpName)
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
-                    .foregroundColor(fg)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(bg))
-            }
-        }
     }
 
     private var diagramBody: some View {

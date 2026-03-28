@@ -55,8 +55,6 @@ final class GameState {
     var gameMode:  GameMode  = .nameTheNote
     var difficulty: Difficulty = .beginner
 
-    var gameMode: GameMode = .nameTheNote
-
     // Current question
     var currentString: Int  = 0
     var currentFret:   Int  = 0

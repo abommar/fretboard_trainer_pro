@@ -63,7 +63,7 @@ struct ContentView: View {
         .fullScreenCover(item: $activeScreen) { screen in
             switch screen {
             case .circleOfFifths:  CircleOfFifthsView()
-            case .chordCharts:     ChordChartsView(audioEngine: audioEngine)
+            case .chordCharts:     ChordChartsView()
             case .chromaticTuner:  ChromaticTunerView()
             case .scales:          ScalesView()
             case .fretboardStyle:  FretboardStyleView(selectedStyle: Binding(
