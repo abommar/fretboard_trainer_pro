@@ -25,7 +25,20 @@ private struct NoteButton: View {
     var onStudyTap: ((Note) -> Void)? = nil
     var studySelectedNote: Note? = nil
 
-    @State private var isPressed = false
+    @AppStorage("useFlats") private var useFlats: Bool = false
+
+    private var isStudyMode: Bool { onStudyTap != nil }
+    private var isStudySelected: Bool { studySelectedNote == note }
+
+    private var studyColor: Color {
+        let hue = Double(note.rawValue) / 12.0
+        return Color(hue: hue, saturation: 0.80, brightness: 0.95)
+    }
+
+    private var studyTextColor: Color {
+        let hue = Double(note.rawValue) / 12.0
+        return (hue > 0.14 && hue < 0.56) ? Color.black.opacity(0.85) : .white
+    }
 
     private var buttonColor: Color {
         if let _ = onStudyTap {
@@ -39,7 +52,7 @@ private struct NoteButton: View {
             return Color(hex: "#2A2A4A")
         case .wrong(let tapped, let correct):
             if note == tapped { return .red }
-            if note == correct { return Color(hex: "#2A2A4A") } // green outline handled separately
+            if note == correct { return Color(hex: "#2A2A4A") }
             return Color(hex: "#2A2A4A")
         }
     }
@@ -54,6 +67,11 @@ private struct NoteButton: View {
         return .clear
     }
 
+    private var labelColor: Color {
+        if isStudyMode && isStudySelected { return studyTextColor }
+        return .white
+    }
+
     var body: some View {
         Button {
             if let onStudyTap {
@@ -62,9 +80,9 @@ private struct NoteButton: View {
                 gameState.submit(answer: note)
             }
         } label: {
-            Text(note.sharpName)
+            Text(useFlats ? note.flatName : note.sharpName)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(labelColor)
                 .frame(maxWidth: .infinity)
                 .frame(height: buttonHeight)
                 .background(

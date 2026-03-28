@@ -55,15 +55,15 @@ struct DrawerMenuView: View {
             // Header
             VStack(alignment: .leading, spacing: 2) {
                 Text("FretTrainerEZ")
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .font(.system(size: 17, weight: .heavy, design: .rounded))
                     .foregroundColor(.white)
                 Text("Music Tools")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .foregroundColor(accent)
             }
-            .padding(.top, 56)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            .padding(.top, 52)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 14)
 
             Divider().background(Color.white.opacity(0.1))
 
@@ -103,23 +103,23 @@ struct DrawerMenuView: View {
 
     private func menuItem(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(.system(size: 18))
+                    .font(.system(size: 15))
                     .foregroundColor(accent)
-                    .frame(width: 26)
-                VStack(alignment: .leading, spacing: 2) {
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 1) {
                     Text(title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white)
                     Text(subtitle)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                         .foregroundColor(.white.opacity(0.45))
                 }
                 Spacer()
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

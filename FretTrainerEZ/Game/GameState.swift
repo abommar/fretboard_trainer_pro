@@ -55,6 +55,8 @@ final class GameState {
     var gameMode:  GameMode  = .nameTheNote
     var difficulty: Difficulty = .beginner
 
+    var gameMode: GameMode = .nameTheNote
+
     // Current question
     var currentString: Int  = 0
     var currentFret:   Int  = 0
@@ -342,6 +344,12 @@ final class GameState {
                 self.saveTimedScore()
             }
         }
+    }
+
+    private func saveTimedScoreIfBetter() {
+        guard correctCount > bestTimedScore else { return }
+        UserDefaults.standard.set(correctCount, forKey: timedScoreKey)
+        isNewBest = true
     }
 
     func stopTimedGame() {

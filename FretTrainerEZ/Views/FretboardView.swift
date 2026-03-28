@@ -141,10 +141,102 @@ struct FretboardView: View {
     private func singleDot(at fret: Int, verticalFraction: CGFloat) -> some View {
         let x = nutWidth + CGFloat(fret) * fretWidth - fretWidth / 2
         let y = fretboardHeight * verticalFraction
-        return Circle()
-            .fill(Color.white.opacity(0.25))
-            .frame(width: 14, height: 14)
-            .offset(x: x - 7, y: y - 7)
+        return ZStack {
+            // Base cream
+            Circle()
+                .fill(Color(hex: "#EDE8E0"))
+            // Iridescent shimmer — offset radial blends teal, pink, and white
+            Circle()
+                .fill(RadialGradient(
+                    colors: [
+                        Color.white.opacity(0.95),
+                        Color(hex: "#C8E8F0").opacity(0.60),
+                        Color(hex: "#F0C8E0").opacity(0.40),
+                        Color(hex: "#D0E8D8").opacity(0.25),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: 0.38, y: 0.28),
+                    startRadius: 0,
+                    endRadius: 9
+                ))
+            // Specular highlight — small bright fleck
+            Circle()
+                .fill(Color.white.opacity(0.85))
+                .frame(width: 4, height: 4)
+                .offset(x: -3.5, y: -3.5)
+            // Subtle rim shadow
+            Circle()
+                .stroke(Color(hex: "#A09888").opacity(0.45), lineWidth: 0.75)
+        }
+        .frame(width: 16, height: 16)
+        .offset(x: x - 8, y: y - 8)
+    }
+
+    // MARK: - Scale highlight dots
+    @ViewBuilder
+    private var scaleHighlightDots: some View {
+        ForEach(Array(scaleHighlights.enumerated()), id: \.offset) { _, pair in
+            let (pos, color) = pair
+            let x = fretX(fret: pos.fret)
+            let y = stringY(string: pos.string)
+            Circle()
+                .fill(color)
+                .frame(width: 20, height: 20)
+                .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 1.5))
+                .position(x: x, y: y)
+        }
+    }
+
+    // MARK: - Study mode note labels
+    private var noteLabelsOverlay: some View {
+        let pillW: CGFloat = 26
+        let pillH: CGFloat = 16
+        return ForEach(0..<totalStrings, id: \.self) { stringIdx in
+            ForEach(0...fretCount, id: \.self) { fret in
+                let note = fretboard.note(string: stringIdx, fret: fret)
+                // If a filter is active, skip all other notes
+                if let filter = studyFilterNote, note != filter { return AnyView(EmptyView()) }
+                let label = fretboard.tuning.useFlats ? note.flatName : note.sharpName
+                let x = fretX(fret: fret)
+                let y = stringY(string: stringIdx)
+                return AnyView(
+                    Text(label)
+                        .font(.system(size: 9, weight: .heavy, design: .rounded))
+                        .foregroundColor(noteLabelTextColor(for: note))
+                        .frame(width: pillW, height: pillH)
+                        .background(Capsule().fill(noteColor(for: note)))
+                        .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.5))
+                        .position(x: x, y: y)
+                )
+            }
+        }
+    }
+
+    private func noteColor(for note: Note) -> Color {
+        let hue = Double(note.rawValue) / 12.0
+        return Color(hue: hue, saturation: 0.80, brightness: 0.95)
+    }
+
+    /// Use dark text on light-hue pills (yellow/cyan range), white elsewhere.
+    private func noteLabelTextColor(for note: Note) -> Color {
+        // Notes in the yellow/green/cyan band (roughly hue 0.15–0.55) are light enough to need dark text
+        let hue = Double(note.rawValue) / 12.0
+        return (hue > 0.14 && hue < 0.56) ? Color.black.opacity(0.85) : .white
+    }
+
+    // MARK: - Found positions (persistent green dots in Find The Fret)
+    @ViewBuilder
+    private var foundPositionCircles: some View {
+        ForEach(foundPositions, id: \.self) { pos in
+            let x = fretX(fret: pos.fret)
+            let y = stringY(string: pos.string)
+            Circle()
+                .fill(Color.green)
+                .frame(width: 22, height: 22)
+                .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 2))
+                .position(x: x, y: y)
+                .transition(.scale.combined(with: .opacity))
+        }
     }
 
     // MARK: - Highlight circle
@@ -166,7 +258,9 @@ struct FretboardView: View {
                             .stroke(Color.white.opacity(0.7), lineWidth: 2)
                     )
             }
-            .offset(x: x - 11, y: y - 11)
+            // .position() places the CENTER of the view at (x, y) regardless of view size.
+            // This is unambiguous unlike .offset() which depends on knowing the view's frame size.
+            .position(x: x, y: y)
             .id("\(s)-\(f)")
         }
     }
