@@ -8,6 +8,8 @@ struct ChordChartsView: View {
 
     @AppStorage("useFlats") private var useFlats: Bool = false
 
+    @State private var audioEngine = NoteAudioEngine()
+
     private let accent  = Color(hex: "#E94560")
     private let bg      = Color(hex: "#1A1A2E")
     private let cardBg  = Color(hex: "#16213E")
@@ -100,6 +102,16 @@ struct ChordChartsView: View {
         .background(cardBg.opacity(0.6))
     }
 
+    private func playChord(_ voicing: ChordVoicing) {
+        for (index, fret) in voicing.frets.enumerated() {
+            guard let fret else { continue }
+            let delay = Double(index) * 0.045
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                audioEngine.play(string: index, fret: fret)
+            }
+        }
+    }
+
     private func noteChip(_ note: Note) -> some View {
         let selected = note == selectedRoot
         return Button(action: { selectedRoot = note }) {
@@ -150,7 +162,22 @@ struct ChordChartsView: View {
                 ScrollView {
                     VStack(spacing: 14) {
                         ForEach(voicings) { voicing in
-                            ChordDiagramView(voicing: voicing)
+                            VStack(spacing: 6) {
+                                ChordDiagramView(voicing: voicing)
+                                Button(action: { playChord(voicing) }) {
+                                    HStack(spacing: 5) {
+                                        Image(systemName: "play.fill")
+                                            .font(.system(size: 10))
+                                        Text("Play")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 7)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(accent))
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
                     .padding(14)

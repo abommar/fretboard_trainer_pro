@@ -41,11 +41,19 @@ final class NoteAudioEngine {
         engine.mainMixerNode.outputVolume = 0.7
     }
 
+    /// True if the engine failed to start — callers can check this to show a UI warning.
+    private(set) var audioUnavailable: Bool = false
+
     private func ensureRunning() {
         if engine.isRunning { return }
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
-        try? AVAudioSession.sharedInstance().setActive(true)
-        try? engine.start()
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
+            try engine.start()
+            audioUnavailable = false
+        } catch {
+            audioUnavailable = true
+        }
     }
 
     // MARK: - Extended Karplus-Strong synthesis

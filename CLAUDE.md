@@ -61,7 +61,8 @@ FretTrainerEZ/
 │   ├── FretboardStyleView.swift    # Full-screen style picker with Canvas mini-preview per style
 │   └── SettingsView.swift          # Haptics toggle, Sound Effects toggle, Note Names sharps/flats picker + live preview
 ├── ContentView.swift               # Root layout + SnapSlider; isStudyMode, studyHighlightNote, audioEngine,
-│                                   #   fretboard (stored), soundEnabled, useFlats, fretboardStyle @AppStorage
+│                                   #   fretboard (stored), soundEnabled, useFlats, fretboardStyle @AppStorage;
+│                                   #   portrait/landscape header shows "streak N" in gold when currentStreak≥2
 └── FretTrainerEZApp.swift
 
 FretTrainerEZTests/
@@ -74,9 +75,10 @@ FretTrainerEZTests/
 - `AnswerState` is `Equatable` so SwiftUI `.animation(value:)` works
 - `Color(hex:)` extension lives in `FretboardView.swift` — used across all views
 - Haptics gracefully degrade if hardware doesn't support them; `hapticsEnabled` read directly from `UserDefaults.standard` in `GameState.playHaptic()` (not @AppStorage — GameState is not a View)
-- Root layout is a `VStack` with `.background(bg.ignoresSafeArea())` — NOT a ZStack — to keep header pinned to top
-- `GeometryReader` in ContentView drives adaptive sizing: portrait uses 200pt fretboard / 44pt buttons; landscape (<500pt height) shrinks both
-- FretboardView internal content is exactly 200pt tall (fretboardHeight+36); frame must match or use `.clipped()`
+- Root layout is a `ZStack` (body) with portrait/landscape branches keyed on `verticalSizeClass == .compact`
+- **Portrait**: `VStack(alignment: .top)` — fixed zones: portraitTopH(148) + fretboardH(192) + portraitPromptH(30) + portraitGameH(100); btnH=44
+- **Landscape**: `ZStack(alignment: .top)` — top bar floats as overlay (landscapeTopH=68, `.background` opacity 0.95); content VStack centered via `Spacer(minLength:0)` with `.padding(.top, landscapeTopH)` and `.ignoresSafeArea(.container, edges: .bottom)` to extend to physical screen edge; landscapePromptH=20, landscapeGameH=70, btnH=30
+- FretboardView internal content is `fretboardHeight + 28` = 192pt; `fretboardH` constant used in both layouts
 - Highlight dot uses `.id("\(string)-\(fret)")` to force recreation on new question, preventing position animation bugs
 - All buttons use `.buttonStyle(.plain)` to remove SwiftUI's 44pt minimum tap height
 - `fretboard` is a stored `let` property in ContentView (not created inline) so the same instance is shared between FretboardView and the onFretTap closure
@@ -98,7 +100,7 @@ FretTrainerEZTests/
 ## Game Modes
 - **Name That Note**: fret is highlighted, user taps correct note name from 12-button grid; note tone plays on each new question (when sound on)
 - **Find The Fret**: note name shown, user taps ALL positions of that note on the fretboard; each correct tap stays highlighted green and plays its tone (when sound on); wrong taps flash red 0.6s; round advances when `required.isSubset(of: foundFrets)`; skip button skips to a different note
-- **Memory Challenge**: fretboard briefly flashes target positions, then clears; user taps remembered positions to complete the round
+- **Memory Challenge**: fretboard briefly flashes target positions, then clears; user taps remembered positions to complete the round; scoring is **per round** (1 correct/1 total when all positions found) — not per individual tap; round-complete haptic fires on last correct tap
 - `FretPosition: Hashable` struct used for multi-tap tracking; `foundFrets: Set<FretPosition>` in GameState
 - `questionID: UUID` on GameState regenerated each `nextQuestion()` — ContentView uses `.onChange(of: gameState.questionID)` to trigger audio in Name That Note
 - Best timed scores persisted via UserDefaults, key: `"best_\(gameMode.rawValue)_\(timerDuration)"`
@@ -117,6 +119,8 @@ FretTrainerEZTests/
 - Open string MIDI: `[40, 45, 50, 55, 59, 64]` (low E to high E)
 - Audio session: `.ambient` — mixes with background music
 - Gated by `soundEnabled` @AppStorage in ContentView before calling `audioEngine.play()`
+- `audioUnavailable: Bool` — set true if `AVAudioEngine.start()` throws; callers can surface this to the user
+- **ChordChartsView** has its own `@State private var audioEngine = NoteAudioEngine()` with a `playChord(_ voicing:)` helper that staggers per-string playback at 45ms intervals; each diagram card has a "Play" button
 
 ## Hamburger Menu & Music Tool Screens
 - `AppScreen` enum (in DrawerMenuView.swift): `.circleOfFifths`, `.chordCharts`, `.songGenerator`, `.chromaticTuner`, `.scales`, `.fretboardStyle`, `.settings` — conforms to `Identifiable`
@@ -124,7 +128,7 @@ FretTrainerEZTests/
 - ContentView presents screens via `.fullScreenCover(item: $activeScreen)`
 - Navigation back from each screen uses `@Environment(\.dismiss)`
 - **CircleOfFifthsView**: Diatonic chord highlighting — tap a key to highlight IV/I/V (outer) and ii/vi/iii (inner) by chord function color. Detail card shows all 7 diatonic chords as color-coded pills + 4 common progressions with real chord names. Orientation-aware layout.
-- **ChordChartsView**: Split layout — left panel (44% width, max 175pt) scrollable chord diagrams; right panel theory breakdown: chord name + mood subtitle, NOTES pills + INTERVALS list side-by-side
+- **ChordChartsView**: Split layout — left panel (44% width, max 175pt) scrollable chord diagrams with a "Play" button under each voicing; right panel theory breakdown: chord name + mood subtitle, NOTES pills + INTERVALS list side-by-side
 - **Chord Jam**: progression playground with 20 common chord chips; tap to add, drag to reorder, tap arranged chord to strum playback; supports portrait and landscape layouts
 - **ChordDiagramView**: wood background, fret wires, string lines, red finger dots, X/O above nut; `baseFret` label for barre positions
 - **ChromaticTunerView**: Mic-based pitch detection, large note name + cents meter needle, tuning reference row. Orientation-aware (portrait=stacked, landscape=two-column). Custom nav bar accounts for safe-area top inset; compact landscape keeps controls visible via adaptive scrolling. Back button uses dismiss only; cleanup via `.onDisappear { engine.stop() }`.
@@ -143,6 +147,7 @@ All pitch logic lives in `ChromaticTunerView.swift` — no external dependencies
 - Uses `AVAudioEngine` + `installTap` for mic input (4096-sample buffers)
 - All private audio properties are `@ObservationIgnored` (prevents `@Observable` macro from interfering with audio callbacks)
 - `stop()` is idempotent: `guard isListening else { return }` — prevents crash if called before `start()`
+- `startupError: String?` — set if `AVAudioEngine.start()` throws; shown below the Start button in the UI
 - **Note confirmation**: requires 3 consecutive frames agreeing on a note before display updates — prevents single-frame glitches
 - **Cents smoothing**: exponential moving average (α = 0.25) on the needle
 - Requires `NSMicrophoneUsageDescription` — set in build settings via `INFOPLIST_KEY_NSMicrophoneUsageDescription`

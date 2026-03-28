@@ -109,6 +109,7 @@ final class TunerEngine {
     var centsOff: Float = 0
     var frequency: Float = 0
     var isListening: Bool = false
+    var startupError: String? = nil
 
     @ObservationIgnored private var audioEngine = AVAudioEngine()
 
@@ -195,7 +196,10 @@ final class TunerEngine {
         do {
             try audioEngine.start()
             isListening = true
-        } catch {}
+        } catch {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            startupError = "Microphone unavailable. Check permissions in Settings."
+        }
     }
 
     func stop() {
@@ -504,19 +508,29 @@ struct ChromaticTunerView: View {
     // MARK: - Start/Stop Button
 
     private var startStopButton: some View {
-        Button(action: toggleListening) {
-            HStack(spacing: 8) {
-                Image(systemName: engine.isListening ? "mic.slash.fill" : "mic.fill")
-                    .font(.system(size: 14))
-                Text(engine.isListening ? "Stop" : "Start Tuner")
-                    .font(.system(size: 15, weight: .bold))
+        VStack(spacing: 6) {
+            Button(action: toggleListening) {
+                HStack(spacing: 8) {
+                    Image(systemName: engine.isListening ? "mic.slash.fill" : "mic.fill")
+                        .font(.system(size: 14))
+                    Text(engine.isListening ? "Stop" : "Start Tuner")
+                        .font(.system(size: 15, weight: .bold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 36)
+                .padding(.vertical, 12)
+                .background(RoundedRectangle(cornerRadius: 12).fill(engine.isListening ? Color.gray.opacity(0.35) : accent))
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 36)
-            .padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: 12).fill(engine.isListening ? Color.gray.opacity(0.35) : accent))
+            .buttonStyle(.plain)
+
+            if let err = engine.startupError {
+                Text(err)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.red.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+            }
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: Helpers

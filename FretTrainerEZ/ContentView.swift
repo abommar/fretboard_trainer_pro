@@ -12,9 +12,9 @@ private let portraitPromptH: CGFloat = 30   // prompt text row
 private let portraitGameH:   CGFloat = 100  // game-UI zone (same height for all 3 modes)
 
 // Landscape compact zone heights
-private let landscapeTopH:    CGFloat = 78   // two-row top bar
-private let landscapePromptH: CGFloat = 22
-private let landscapeGameH:   CGFloat = 80
+private let landscapeTopH:    CGFloat = 68   // two-row top bar
+private let landscapePromptH: CGFloat = 20
+private let landscapeGameH:   CGFloat = 70
 
 struct ContentView: View {
     @State private var gameState        = GameState()
@@ -117,24 +117,35 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    // MARK: - Landscape layout (compact vertical — same structure as portrait)
+    // MARK: - Landscape layout
+    // Top bar floats as an overlay so the game content centers across the full screen height.
+    // .padding(.top, landscapeTopH) ensures the content never slides under the top bar.
 
     private var landscapeLayout: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .top) {
+            // Game content — centered between top-bar bottom and screen bottom edge
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                fretboardView
+                    .frame(height: fretboardH)
+                    .transaction { $0.animation = nil }
+                promptRow
+                    .frame(height: landscapePromptH)
+                gameUIZone(btnH: 30)
+                    .frame(height: landscapeGameH)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.top, landscapeTopH)
+
+            // Top bar pinned at top edge
             landscapeTopZone
                 .frame(height: landscapeTopH)
                 .clipped()
-            Spacer(minLength: 0)
-            fretboardView
-                .frame(height: fretboardH)
-                .transaction { $0.animation = nil }
-            promptRow
-                .frame(height: landscapePromptH)
-            gameUIZone(btnH: 32)
-                .frame(height: landscapeGameH)
-            Spacer(minLength: 0)
+                .background(Color(hex: "#1A1A2E").opacity(0.95))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     // MARK: - Landscape top zone (two-row bar)
@@ -158,9 +169,16 @@ struct ContentView: View {
                 Spacer()
 
                 if !gameState.isTimedMode {
-                    Text("\(gameState.correctCount)/\(gameState.totalCount)")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text("\(gameState.correctCount)/\(gameState.totalCount)")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white)
+                        if gameState.currentStreak >= 2 {
+                            Text("streak \(gameState.currentStreak)")
+                                .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                                .foregroundColor(Color(hex: "#FFD700"))
+                        }
+                    }
                 }
 
                 studyButton
@@ -356,9 +374,15 @@ struct ContentView: View {
                     Text("\(gameState.correctCount)/\(gameState.totalCount)")
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
-                    Text("\(gameState.scorePercent)%")
-                        .font(.system(size: 9))
-                        .foregroundColor(scoreColor)
+                    if gameState.currentStreak >= 2 {
+                        Text("streak \(gameState.currentStreak)")
+                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .foregroundColor(Color(hex: "#FFD700"))
+                    } else {
+                        Text("\(gameState.scorePercent)%")
+                            .font(.system(size: 9))
+                            .foregroundColor(scoreColor)
+                    }
                 }
                 .padding(.trailing, 4)
             }

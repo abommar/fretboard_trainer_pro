@@ -137,6 +137,11 @@ final class GameState {
         nextQuestion()
     }
 
+    deinit {
+        countdownTimer?.invalidate()
+        memoryFlashTimer?.invalidate()
+    }
+
     // MARK: - Mode & Difficulty
 
     func setGameMode(_ mode: GameMode) {
@@ -270,12 +275,14 @@ final class GameState {
 
         if fretboard.note(string: string, fret: fret) == correctNote {
             foundFrets.insert(pos)
-            totalCount    += 1
-            correctCount  += 1
-            currentStreak += 1
-            if currentStreak > bestStreakThisSession { bestStreakThisSession = currentStreak }
             playHaptic(success: true)
             if required.isSubset(of: foundFrets) {
+                // Count the whole round as one correct answer
+                correctCount  += 1
+                totalCount    += 1
+                currentStreak += 1
+                if currentStreak > bestStreakThisSession { bestStreakThisSession = currentStreak }
+                playHaptic(success: true)
                 memoryPhase = .complete
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                     guard let self else { return }
@@ -342,12 +349,6 @@ final class GameState {
                 self.saveTimedScore()
             }
         }
-    }
-
-    private func saveTimedScoreIfBetter() {
-        guard correctCount > bestTimedScore else { return }
-        UserDefaults.standard.set(correctCount, forKey: timedScoreKey)
-        isNewBest = true
     }
 
     func stopTimedGame() {
