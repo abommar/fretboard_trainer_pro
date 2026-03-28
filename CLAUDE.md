@@ -213,17 +213,21 @@ All views use the same dark theme colors:
 - `accent = #E94560` (red)
 - Drawer bg: `#111128`
 
-## TestFlight Checklist
-These items are needed before the first TestFlight build:
-- [ ] **App icon** — all required sizes in `Assets.xcassets/AppIcon.appiconset` (1024×1024 + all device sizes, or use a single 1024×1024 with "Single Size" option in Xcode 15+)
-- [ ] **Bundle ID registered** — `com.frettrainerez.app` must be registered in App Store Connect / Developer Portal
-- [ ] **Signing team** — set Development Team in project signing settings (requires paid Apple Developer account)
-- [ ] **Version & build** — CFBundleShortVersionString (e.g. "1.0") and CFBundleVersion (e.g. "1") set in Info.plist / project settings
-- [ ] **Privacy descriptions** — NSMicrophoneUsageDescription already set ✓
-- [ ] **No export compliance issues** — app uses no encryption ✓
-- [ ] **Archive** — Product → Archive in Xcode (use a real device destination, not simulator)
-- [ ] **Upload** — Xcode Organizer → Distribute App → App Store Connect → Upload
-- [ ] **App Store Connect** — create app record, add internal testers (no review needed for internal), or add external testers (requires Beta App Review)
+## App Icon
+- Single 1024×1024 PNG at `FretTrainerEZ/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`
+- `Contents.json` uses the modern single-entry universal format (`"idiom":"universal", "platform":"ios", "size":"1024x1024"`) — actool auto-generates all required sizes at build time
+- `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` in both Debug and Release build configs (already set)
+- **CRITICAL**: `Assets.xcassets` must be in `project.pbxproj` — as a PBXFileReference, in the FretTrainerEZ PBXGroup, as a PBXBuildFile, and in the PBXResourcesBuildPhase. Without this the catalog is silently skipped, producing no `Assets.car` and no `CFBundleIconName` in Info.plist. This was the root cause of all three App Store Connect validation errors.
+
+## TestFlight / Distribution — All Done ✓
+- Active paid Apple Developer account ✓
+- App already live on TestFlight ✓
+- Bundle ID: `com.dontfretaboutitai.frettrainerez` (registered) ✓
+- Signing team: `XCT9NV6F8L` ✓
+- Version 1.0, Build 1 ✓
+- NSMicrophoneUsageDescription set ✓
+- No encryption ✓
+- App Store Connect validation errors resolved (icon sizes + CFBundleIconName) ✓
 
 ## Roadmap / What's NOT Built Yet
 - Phase 5: Extended chord voicings (9th/11th/13th chord types in ChordLibrary)
