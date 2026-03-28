@@ -284,69 +284,45 @@ struct ChromaticTunerView: View {
     var body: some View {
         ZStack {
             bg.ignoresSafeArea()
-
             VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Button(action: { engine.stop(); dismiss() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 34, height: 34)
-                            .background(Circle().fill(Color.white.opacity(0.1)))
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                    Text("Chromatic Tuner")
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Color.clear.frame(width: 34, height: 34)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 56)
-                .padding(.bottom, 12)
+                // Header — uses safeAreaInset so button is always above notch/camera
+                navBar
 
-                // Tuning wheel picker
-                tuningPicker
-                    .padding(.bottom, 16)
+                // Tuning: compact inline Menu instead of tall wheel
+                tuningMenuRow.padding(.horizontal, 20).padding(.bottom, 10)
 
-                // String reference row
-                stringReferenceRow
-                    .padding(.bottom, 20)
+                // String reference
+                stringReferenceRow.padding(.bottom, 12)
 
-                // Note name
+                // Note + frequency
                 Text(engine.detectedNote)
-                    .font(.system(size: 90, weight: .heavy, design: .rounded))
+                    .font(.system(size: 72, weight: .heavy, design: .rounded))
                     .foregroundColor(noteColor)
-                    .frame(height: 105)
+                    .frame(height: 84)
                     .animation(.easeInOut(duration: 0.1), value: engine.detectedNote)
 
-                // Frequency
                 Text(engine.frequency > 0 ? String(format: "%.1f Hz", engine.frequency) : " ")
                     .font(.system(size: 13, design: .monospaced))
                     .foregroundColor(.white.opacity(0.4))
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 12)
 
-                // Cents meter card
-                VStack(spacing: 12) {
+                // Cents meter
+                VStack(spacing: 8) {
                     CentsMeterView(cents: engine.centsOff, active: engine.isListening && engine.detectedNote != "--")
-                        .frame(height: 44)
+                        .frame(height: 40)
                         .padding(.horizontal, 4)
-
                     Text(centsLabel)
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundColor(noteColor.opacity(0.85))
                         .frame(height: 16)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
                 .background(RoundedRectangle(cornerRadius: 14).fill(cardBg))
-                .padding(.horizontal, 28)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 16)
 
-                Spacer(minLength: 0)
-
-                // Start / Stop button
+                // Start / Stop
                 Button(action: toggleListening) {
                     HStack(spacing: 8) {
                         Image(systemName: engine.isListening ? "mic.slash.fill" : "mic.fill")
@@ -356,44 +332,74 @@ struct ChromaticTunerView: View {
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 44)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(engine.isListening ? Color.gray.opacity(0.4) : accent)
-                    )
+                    .padding(.vertical, 13)
+                    .background(RoundedRectangle(cornerRadius: 14)
+                        .fill(engine.isListening ? Color.gray.opacity(0.4) : accent))
                 }
                 .buttonStyle(.plain)
-                .padding(.bottom, 52)
+
+                Spacer(minLength: 0)
             }
         }
         .onDisappear { engine.stop() }
         .preferredColorScheme(.dark)
     }
 
-    // MARK: - Tuning Picker
+    // MARK: - Nav bar (safe-area aware)
 
-    private var tuningPicker: some View {
-        VStack(spacing: 0) {
+    private var navBar: some View {
+        HStack {
+            Button(action: { engine.stop(); dismiss() }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(Color.white.opacity(0.1)))
+            }
+            .buttonStyle(.plain)
+            Spacer()
+            Text("Chromatic Tuner")
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .foregroundColor(.white)
+            Spacer()
+            Color.clear.frame(width: 34, height: 34)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(cardBg.ignoresSafeArea(edges: .top))
+        .padding(.bottom, 8)
+    }
+
+    // MARK: - Compact tuning row (Menu replaces tall wheel picker)
+
+    private var tuningMenuRow: some View {
+        HStack {
             Text("TUNING")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.white.opacity(0.35))
                 .tracking(1.5)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 32)
-                .padding(.bottom, 2)
-
-            Picker("Tuning", selection: $selectedTuning) {
+            Spacer()
+            Menu {
                 ForEach(GuitarTuning.all) { tuning in
-                    Text(tuning.name)
-                        .font(.system(size: 15, weight: .medium))
-                        .tag(tuning)
+                    Button(tuning.name) { selectedTuning = tuning }
                 }
+            } label: {
+                HStack(spacing: 6) {
+                    Text(selectedTuning.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(RoundedRectangle(cornerRadius: 8).fill(cardBg))
             }
-            .pickerStyle(.wheel)
-            .frame(height: 100)
-            .clipped()
+            .buttonStyle(.plain)
         }
     }
+
 
     // MARK: - String Reference Row
 
