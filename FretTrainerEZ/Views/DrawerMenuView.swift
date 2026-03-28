@@ -3,11 +3,19 @@ import SwiftUI
 enum AppScreen: Identifiable {
     case circleOfFifths
     case chordCharts
+    case chromaticTuner
+    case scales
+    case fretboardStyle
+    case settings
 
     var id: String {
         switch self {
-        case .circleOfFifths: return "circleOfFifths"
-        case .chordCharts:    return "chordCharts"
+        case .circleOfFifths:  return "circleOfFifths"
+        case .chordCharts:     return "chordCharts"
+        case .chromaticTuner:  return "chromaticTuner"
+        case .scales:          return "scales"
+        case .fretboardStyle:  return "fretboardStyle"
+        case .settings:        return "settings"
         }
     }
 }
@@ -66,6 +74,24 @@ struct DrawerMenuView: View {
 
             menuItem(icon: "music.note.list", title: "Chord Charts", subtitle: "Common voicings") {
                 navigate(to: .chordCharts)
+            }
+
+            menuItem(icon: "tuningfork", title: "Chromatic Tuner", subtitle: "Tune by ear") {
+                navigate(to: .chromaticTuner)
+            }
+
+            menuItem(icon: "music.quarternote.3", title: "Scale Explorer", subtitle: "Landscape · 10 scales") {
+                navigate(to: .scales)
+            }
+
+            menuItem(icon: "paintpalette.fill", title: "Fretboard Style", subtitle: "5 wood themes") {
+                navigate(to: .fretboardStyle)
+            }
+
+            Divider().background(Color.white.opacity(0.1))
+
+            menuItem(icon: "gearshape.fill", title: "Settings", subtitle: "Sound, haptics, note names") {
+                navigate(to: .settings)
             }
 
             Spacer()

@@ -13,6 +13,11 @@ struct FretboardView: View {
     var difficultyBoundaryFret: Int? = nil
     /// When non-nil, each fret intersection is tappable.
     var onFretTap: ((Int, Int) -> Void)? = nil
+    var showNoteLabels: Bool = false
+    var studyFilterNote: Note? = nil
+
+    @AppStorage("fretboardStyle") private var fretboardStyleRaw: String = FretboardStyle.rosewood.rawValue
+    private var style: FretboardStyle { FretboardStyle(rawValue: fretboardStyleRaw) ?? .rosewood }
 
     // Layout constants
     private let stringSpacing: CGFloat = 28
@@ -38,14 +43,15 @@ struct FretboardView: View {
                 if let bf = difficultyBoundaryFret { difficultyBoundaryLine(at: bf) }
                 stringLines
                 inlayDots
+                noteLabelsCanvas
                 scaleHighlightDots
                 foundPositionCircles
                 highlightCircle
                 fretNumbers
                 stringLabels
-                if onFretTap != nil { fretTapOverlay }
+                fretTapOverlay  // always in tree; no-op when onFretTap == nil
             }
-            .frame(width: fretboardWidth, height: fretboardHeight + 28)
+            .frame(width: fretboardWidth, height: fretboardHeight + 28, alignment: .topLeading)
             .padding(.leading, 40)
         }
     }
@@ -59,7 +65,7 @@ struct FretboardView: View {
         Rectangle()
             .fill(
                 LinearGradient(
-                    colors: [Color(hex: "#4A3525"), Color(hex: "#3D2B1F"), Color(hex: "#2E1F14")],
+                    colors: style.boardColors,
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -70,7 +76,7 @@ struct FretboardView: View {
     // MARK: - Nut
     private var nutView: some View {
         Rectangle()
-            .fill(Color(hex: "#E8D5A3"))
+            .fill(style.nutColor)
             .frame(width: nutWidth, height: fretboardHeight)
     }
 
@@ -80,7 +86,7 @@ struct FretboardView: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [Color(hex: "#A0A0A0"), Color(hex: "#D0D0D0"), Color(hex: "#A0A0A0")],
+                        colors: style.fretColors,
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -97,7 +103,7 @@ struct FretboardView: View {
             Capsule()
                 .fill(
                     LinearGradient(
-                        colors: [Color(hex: "#B8B8B8"), Color(hex: "#E8E8E8"), Color(hex: "#B8B8B8")],
+                        colors: style.stringColors,
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -152,7 +158,6 @@ struct FretboardView: View {
                     .fill(highlightColor.opacity(0.3))
                     .frame(width: 36, height: 36)
                     .blur(radius: 8)
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: highlightColor)
                 Circle()
                     .fill(highlightColor)
                     .frame(width: 22, height: 22)
@@ -160,7 +165,6 @@ struct FretboardView: View {
                         Circle()
                             .stroke(Color.white.opacity(0.7), lineWidth: 2)
                     )
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: highlightColor)
             }
             .offset(x: x - 11, y: y - 11)
             .id("\(s)-\(f)")
@@ -187,37 +191,79 @@ struct FretboardView: View {
             .offset(x: nutWidth + CGFloat(fret) * fretWidth)
     }
 
+    // MARK: - Note labels (Study Mode)
+
+    private var noteLabelsCanvas: some View {
+        Canvas { context, _ in
+            guard showNoteLabels else { return }
+            for stringIdx in 0..<totalStrings {
+                for fret in 0...fretCount {
+                    let note = fretboard.note(string: stringIdx, fret: fret)
+                    if let filter = studyFilterNote, note != filter { continue }
+                    let x = fretX(fret: fret)
+                    let y = stringY(string: stringIdx)
+                    let hue = Double(note.rawValue) / 12.0
+                    let bgColor = Color(hue: hue, saturation: 0.80, brightness: 0.95)
+                    let pillRect = CGRect(x: x - 13, y: y - 8, width: 26, height: 16)
+                    let pillPath = Path(roundedRect: pillRect, cornerRadius: 8)
+                    context.fill(pillPath, with: .color(bgColor))
+                    context.stroke(pillPath, with: .color(.white.opacity(0.25)), lineWidth: 0.5)
+                    let textColor: Color = (hue > 0.14 && hue < 0.56) ? Color.black.opacity(0.85) : .white
+                    let text = Text(note.sharpName)
+                        .font(.system(size: 9, weight: .heavy, design: .rounded))
+                        .foregroundColor(textColor)
+                    context.draw(text, at: CGPoint(x: x, y: y), anchor: .center)
+                }
+            }
+        }
+        .frame(width: fretboardWidth, height: fretboardHeight)
+        .allowsHitTesting(false)
+    }
+
     // MARK: - Scale / memory highlight dots
+    // Canvas: single fixed-size view that redraws in place — zero structural changes
+    // to the ZStack regardless of how many dots are needed.
 
     private var scaleHighlightDots: some View {
-        ForEach(scaleHighlights.indices, id: \.self) { i in
-            let (pos, color) = scaleHighlights[i]
-            let x = fretX(fret: pos.fret)
-            let y = stringY(string: pos.string)
-            Circle()
-                .fill(color)
-                .frame(width: 20, height: 20)
-                .overlay(Circle().stroke(Color.white.opacity(0.4), lineWidth: 1.5))
-                .position(x: x, y: y)
+        Canvas { context, _ in
+            for (pos, color) in scaleHighlights {
+                let x = fretX(fret: pos.fret)
+                let y = stringY(string: pos.string)
+                let rect = CGRect(x: x - 10, y: y - 10, width: 20, height: 20)
+                context.fill(Path(ellipseIn: rect), with: .color(color))
+                context.stroke(
+                    Path(ellipseIn: rect.insetBy(dx: -0.75, dy: -0.75)),
+                    with: .color(.white.opacity(0.4)),
+                    lineWidth: 1.5
+                )
+            }
         }
+        .frame(width: fretboardWidth, height: fretboardHeight)
+        .allowsHitTesting(false)
     }
 
     // MARK: - Found position circles (Find The Fret / Memory)
 
     private var foundPositionCircles: some View {
-        ForEach(foundPositions.indices, id: \.self) { i in
-            let pos = foundPositions[i]
-            let x = fretX(fret: pos.fret)
-            let y = stringY(string: pos.string)
-            Circle()
-                .fill(Color.green)
-                .frame(width: 22, height: 22)
-                .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 1.5))
-                .position(x: x, y: y)
+        Canvas { context, _ in
+            for pos in foundPositions {
+                let x = fretX(fret: pos.fret)
+                let y = stringY(string: pos.string)
+                let rect = CGRect(x: x - 11, y: y - 11, width: 22, height: 22)
+                context.fill(Path(ellipseIn: rect), with: .color(.green))
+                context.stroke(
+                    Path(ellipseIn: rect.insetBy(dx: -0.75, dy: -0.75)),
+                    with: .color(.white.opacity(0.7)),
+                    lineWidth: 1.5
+                )
+            }
         }
+        .frame(width: fretboardWidth, height: fretboardHeight)
+        .allowsHitTesting(false)
     }
 
     // MARK: - Fret tap overlay
+    // Always in the view tree (no structural if/else) — allowsHitTesting(false) when no handler set.
 
     private var fretTapOverlay: some View {
         ZStack(alignment: .topLeading) {
@@ -229,10 +275,14 @@ struct FretboardView: View {
                         .contentShape(Rectangle())
                         .offset(x: f == 0 ? 0 : nutWidth + CGFloat(f) * fretWidth - fretWidth / 2,
                                 y: fretboardPadding + CGFloat(totalStrings - 1 - s) * stringSpacing - stringSpacing / 2)
-                        .onTapGesture { onFretTap?(s, f) }
+                        .onTapGesture {
+                            guard let onFretTap else { return }
+                            onFretTap(s, f)
+                        }
                 }
             }
         }
+        .allowsHitTesting(onFretTap != nil)
     }
 
     // MARK: - Fret numbers

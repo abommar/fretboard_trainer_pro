@@ -11,8 +11,10 @@ private let portraitTopH:    CGFloat = 148  // header + mode picker + controls
 private let portraitPromptH: CGFloat = 30   // prompt text row
 private let portraitGameH:   CGFloat = 100  // game-UI zone (same height for all 3 modes)
 
-// Landscape: side-by-side; right control panel width
-private let landscapeRightW: CGFloat = 230
+// Landscape compact zone heights
+private let landscapeTopH:    CGFloat = 78   // two-row top bar
+private let landscapePromptH: CGFloat = 22
+private let landscapeGameH:   CGFloat = 80
 
 struct ContentView: View {
     @State private var gameState        = GameState()
@@ -20,9 +22,15 @@ struct ContentView: View {
     @State private var isDrawerOpen     = false
     @State private var activeScreen: AppScreen? = nil
     @State private var memoryFlashProgress: CGFloat = 1.0
+    @State private var isStudyMode = false
+    @State private var studyHighlightNote: Note? = nil
 
-    @AppStorage("soundEnabled") private var soundEnabled: Bool = false
-    @AppStorage("useFlats")     private var useFlats:     Bool = false
+    @AppStorage("soundEnabled")    private var soundEnabled:    Bool = false
+    @AppStorage("useFlats")        private var useFlats:        Bool = false
+    @AppStorage("fretboardStyle")  private var fretboardStyleRaw: String = FretboardStyle.rosewood.rawValue
+    private var fretboardStyle: FretboardStyle {
+        FretboardStyle(rawValue: fretboardStyleRaw) ?? .rosewood
+    }
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     private var compact: Bool { verticalSizeClass == .compact }
@@ -40,6 +48,8 @@ struct ContentView: View {
             bg.ignoresSafeArea()
             if compact { landscapeLayout } else { portraitLayout }
         }
+        // Fretboard lives here in portrait — pinned by a compile-time constant,
+        // completely outside portraitLayout's view hierarchy so nothing there can shift it.
         .overlay { if gameState.isTimeUp { timeUpOverlay } }
         .overlay {
             DrawerMenuView(isOpen: $isDrawerOpen) { screen in activeScreen = screen }
@@ -52,8 +62,15 @@ struct ContentView: View {
         }
         .fullScreenCover(item: $activeScreen) { screen in
             switch screen {
-            case .circleOfFifths: CircleOfFifthsView()
-            case .chordCharts:    ChordChartsView(audioEngine: audioEngine)
+            case .circleOfFifths:  CircleOfFifthsView()
+            case .chordCharts:     ChordChartsView(audioEngine: audioEngine)
+            case .chromaticTuner:  ChromaticTunerView()
+            case .scales:          ScalesView()
+            case .fretboardStyle:  FretboardStyleView(selectedStyle: Binding(
+                                       get: { fretboardStyle },
+                                       set: { fretboardStyleRaw = $0.rawValue }
+                                   ))
+            case .settings:        SettingsView()
             }
         }
         .onChange(of: gameState.questionID) {
@@ -71,84 +88,117 @@ struct ContentView: View {
                 withTransaction(t) { memoryFlashProgress = 0.0 }
             }
         }
-        // Backstop: suppress any layout animation driven by game-mode changes.
+        // Suppress layout animations driven by game-state changes.
         .animation(nil, value: gameState.gameMode)
+        .animation(nil, value: gameState.memoryPhase)
+        .animation(nil, value: gameState.questionID)
         .preferredColorScheme(.dark)
     }
 
     // MARK: - Portrait layout
+    // Fretboard is NOT in this view — it lives in the body overlay above.
+    // This layout only contains the controls; a Color.clear spacer reserves
+    // the fretboard's space so the zones below it sit at the right Y position.
 
     private var portraitLayout: some View {
         VStack(spacing: 0) {
-            // Zone 1: top controls — FIXED HEIGHT, fretboard Y is always portraitTopH from top
             topZone(compact: false)
                 .frame(height: portraitTopH, alignment: .top)
                 .clipped()
-
-            // Zone 2: FRETBOARD — never moves
             fretboardView
                 .frame(height: fretboardH)
-                .clipped()
-
-            // Zone 3: prompt — FIXED HEIGHT
+                .transaction { $0.animation = nil }
             promptRow
                 .frame(height: portraitPromptH)
-
-            // Zone 4: game UI — FIXED HEIGHT, ZStack keeps all 3 modes in tree
             gameUIZone(btnH: 44)
                 .frame(height: portraitGameH)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    // MARK: - Landscape layout (side-by-side)
+    // MARK: - Landscape layout (compact vertical — same structure as portrait)
 
     private var landscapeLayout: some View {
-        HStack(spacing: 0) {
-            // Left: fretboard anchored to top — never moves within its panel
+        VStack(spacing: 0) {
+            landscapeTopZone
+                .frame(height: landscapeTopH)
+                .clipped()
+            Spacer(minLength: 0)
             fretboardView
                 .frame(height: fretboardH)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-            // Divider
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(width: 1)
-
-            // Right: all controls in a fixed-width panel
-            landscapeControlPanel
-                .frame(width: landscapeRightW)
+                .transaction { $0.animation = nil }
+            promptRow
+                .frame(height: landscapePromptH)
+            gameUIZone(btnH: 32)
+                .frame(height: landscapeGameH)
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Landscape control panel
+    // MARK: - Landscape top zone (two-row bar)
 
-    private var landscapeControlPanel: some View {
+    private var landscapeTopZone: some View {
         VStack(spacing: 0) {
-            landscapeHeader
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 6)
+            // Row 1: hamburger + app name + spacer + score + study + reset
+            HStack(spacing: 8) {
+                Button { isDrawerOpen.toggle() } label: {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(.plain)
 
-            modePicker
-                .padding(.horizontal, 12)
-                .padding(.bottom, 6)
+                Text("FretTrainerEZ")
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
 
-            controlRow(compact: true)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 6)
+                Spacer()
 
-            Divider().background(Color.white.opacity(0.1))
-                .padding(.vertical, 4)
+                if !gameState.isTimedMode {
+                    Text("\(gameState.correctCount)/\(gameState.totalCount)")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                }
 
-            promptRow
-                .frame(height: 24)
+                studyButton
 
-            gameUIZone(btnH: 34)
-                .padding(.top, 4)
+                Button("Reset") { gameState.reset() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(accent)
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6).stroke(accent, lineWidth: 1.5))
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
 
-            Spacer(minLength: 0)
+            // Row 2: mode picker + practice/timed + difficulty/timer
+            HStack(spacing: 8) {
+                modePicker
+                    .frame(maxWidth: 250)
+
+                practiceTimedPicker
+                    .opacity(gameState.gameMode == .memoryChallenge ? 0 : 1)
+                    .disabled(gameState.gameMode == .memoryChallenge)
+
+                ZStack(alignment: .leading) {
+                    difficultySlider
+                        .opacity(showDifficultySlider ? 1 : 0)
+                        .allowsHitTesting(showDifficultySlider)
+                    timerActiveView(compact: true)
+                        .opacity(showTimerActive ? 1 : 0)
+                        .allowsHitTesting(showTimerActive)
+                    durationView(compact: true)
+                        .opacity(showDuration ? 1 : 0)
+                        .allowsHitTesting(showDuration)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 6)
         }
     }
 
@@ -243,9 +293,38 @@ struct ContentView: View {
             foundPositions:  found,
             scaleHighlights: scaleHL,
             difficultyBoundaryFret: gameState.difficulty != .advanced ? gameState.difficulty.maxFret : nil,
-            onFretTap: onTap
+            onFretTap: onTap,
+            showNoteLabels: isStudyMode,
+            studyFilterNote: studyHighlightNote
         )
         .transaction { $0.animation = nil }
+    }
+
+    // MARK: - Study Button
+
+    private var studyButton: some View {
+        Group {
+            if gameState.gameMode != .memoryChallenge {
+                Button {
+                    isStudyMode.toggle()
+                    if !isStudyMode { studyHighlightNote = nil }
+                } label: {
+                    Text("Study")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(isStudyMode ? .black : Color(hex: "#FFD700"))
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 7)
+                                .fill(isStudyMode ? Color(hex: "#FFD700") : Color.clear)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7)
+                                .stroke(Color(hex: "#FFD700").opacity(0.7), lineWidth: 1.5)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     // MARK: - Portrait Header
@@ -282,6 +361,8 @@ struct ContentView: View {
                 }
                 .padding(.trailing, 4)
             }
+
+            studyButton
 
             Button("Reset") { gameState.reset() }
                 .buttonStyle(.plain)
@@ -342,6 +423,7 @@ struct ContentView: View {
                 let selected = gameState.gameMode == mode
                 Button {
                     guard gameState.gameMode != mode else { return }
+                    if mode == .memoryChallenge { isStudyMode = false; studyHighlightNote = nil }
                     var t = Transaction(); t.disablesAnimations = true
                     withTransaction(t) {
                         gameState.setGameMode(mode)
@@ -575,7 +657,14 @@ struct ContentView: View {
     // MARK: - Name That Note UI
 
     private func nameTheNoteUI(btnH: CGFloat) -> some View {
-        NoteAnswerButtonsView(gameState: gameState, buttonHeight: btnH)
+        NoteAnswerButtonsView(
+            gameState: gameState,
+            buttonHeight: btnH,
+            onStudyTap: isStudyMode ? { note in
+                studyHighlightNote = (studyHighlightNote == note) ? nil : note
+            } : nil,
+            studySelectedNote: isStudyMode ? studyHighlightNote : nil
+        )
     }
 
     // MARK: - Find The Fret UI

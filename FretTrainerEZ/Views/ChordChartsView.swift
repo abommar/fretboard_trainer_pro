@@ -60,17 +60,21 @@ struct ChordChartsView: View {
 
     private var filtersRow: some View {
         VStack(spacing: 8) {
-            // Root note picker (scrollable)
-            ScrollView(.horizontal, showsIndicators: false) {
+            // Root note picker — two fixed rows of 6 so all 12 are always visible
+            let notes = Note.allCases
+            VStack(spacing: 6) {
                 HStack(spacing: 6) {
-                    ForEach(Note.allCases, id: \.self) { note in
-                        noteChip(note)
-                    }
+                    ForEach(notes.prefix(6), id: \.self) { noteChip($0) }
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 16)
+                HStack(spacing: 6) {
+                    ForEach(notes.dropFirst(6), id: \.self) { noteChip($0) }
+                    Spacer(minLength: 0)
+                }
             }
+            .padding(.horizontal, 16)
 
-            // Chord type picker
+            // Chord type picker (scrollable — 7 types, fits most screens)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(ChordType.allCases) { type in
@@ -195,6 +199,8 @@ struct ChordDiagramView: View {
                 }
             }
 
+            chordTonesRow
+
             diagramBody
                 .frame(height: CGFloat(fretRows) * cellH + nutH + 28)
 
@@ -206,6 +212,22 @@ struct ChordDiagramView: View {
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(cardBg))
+    }
+
+    private var chordTonesRow: some View {
+        HStack(spacing: 4) {
+            ForEach(voicing.chordTones, id: \.rawValue) { note in
+                let hue = Double(note.rawValue) / 12.0
+                let bg = Color(hue: hue, saturation: 0.80, brightness: 0.95)
+                let fg: Color = (hue > 0.14 && hue < 0.56) ? Color.black.opacity(0.85) : .white
+                Text(note.sharpName)
+                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                    .foregroundColor(fg)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(bg))
+            }
+        }
     }
 
     private var diagramBody: some View {
