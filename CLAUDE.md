@@ -41,6 +41,10 @@ FretTrainerEZ/
 │   ├── FretboardView.swift         # Scrollable fretboard, wood theme; params: highlightString/Fret/Color,
 │   │                               #   foundPositions, showNoteLabels, studyFilterNote, scaleHighlights,
 │   │                               #   style: FretboardStyle, onFretTap
+│   │                               #   Tap zones (fretTapOverlay): each zone spans from fret wire f-1 to wire f
+│   │                               #   (offset = nutWidth + (f-1)*fretWidth), centering the dot in its zone.
+│   │                               #   DO NOT change to nutWidth + f*fretWidth - fretWidth/2 — that shifts zones
+│   │                               #   right by 27pt and makes taps on dots register as the previous fret.
 │   ├── NoteAnswerButtonsView.swift # 12-button grid; useFlats @AppStorage; study mode: onStudyTap + studySelectedNote
 │   ├── DrawerMenuView.swift        # Slide-out hamburger drawer + AppScreen enum
 │   │                               #   (.circleOfFifths, .chordCharts, .songGenerator, .chromaticTuner, .scales, .fretboardStyle, .settings)

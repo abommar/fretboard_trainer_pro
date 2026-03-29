@@ -300,7 +300,7 @@ struct FretboardView: View {
                         .frame(width: f == 0 ? nutWidth + fretWidth / 2 : fretWidth,
                                height: stringSpacing)
                         .contentShape(Rectangle())
-                        .offset(x: f == 0 ? 0 : nutWidth + CGFloat(f) * fretWidth - fretWidth / 2,
+                        .offset(x: f == 0 ? 0 : nutWidth + CGFloat(f - 1) * fretWidth,
                                 y: fretboardPadding + CGFloat(totalStrings - 1 - s) * stringSpacing - stringSpacing / 2)
                         .onTapGesture {
                             guard let onFretTap else { return }
