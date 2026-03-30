@@ -843,3 +843,239 @@ final class ChordJamArrangementEngineTests: XCTestCase {
         XCTAssertEqual(result, [a])
     }
 }
+
+// MARK: - GameState Additional Tests
+
+extension GameStateTests {
+
+    // MARK: required (computed property)
+
+    func testRequiredAllPositionsWithinDifficulty() {
+        let gs = GameState()
+        gs.difficulty  = .beginner
+        gs.correctNote = .E
+        for pos in gs.required {
+            XCTAssertLessThanOrEqual(pos.fret, Difficulty.beginner.maxFret,
+                "required must not include frets beyond maxFret")
+        }
+        XCTAssertFalse(gs.required.isEmpty, "E has positions within beginner range")
+    }
+
+    func testRequiredExcludesFretsAboveDifficulty() {
+        let gs = GameState()
+        gs.difficulty  = .beginner  // maxFret = 5
+        gs.correctNote = .E
+        // E on string 1 (A string) is fret 7 — above beginner range
+        XCTAssertFalse(gs.required.contains(FretPosition(string: 1, fret: 7)))
+    }
+
+    func testRequiredCountMatchesManualFilter() {
+        let gs = GameState()
+        gs.difficulty  = .intermediate
+        gs.correctNote = .A
+        let manual = Fretboard().allPositions(for: .A)
+            .filter { $0.fret <= Difficulty.intermediate.maxFret }
+            .map    { FretPosition(string: $0.string, fret: $0.fret) }
+        XCTAssertEqual(gs.required.count, manual.count)
+    }
+
+    // MARK: submitFret difficulty range regression
+
+    func testSubmitFretOutsideDifficultyIgnored() {
+        let gs = GameState()
+        gs.gameMode        = .findTheFret
+        gs.difficulty      = .beginner  // maxFret = 5
+        gs.correctNote     = .E
+        gs.fretAnswerState = .idle
+        let before = gs.totalCount
+        // E on string 1 fret 7 is the correct note but fret 7 > maxFret 5
+        gs.submitFret(string: 1, fret: 7)
+        XCTAssertEqual(gs.totalCount, before, "tap outside difficulty range must not score")
+        XCTAssertTrue(gs.foundFrets.isEmpty)
+    }
+
+    // MARK: submitMemoryTap
+
+    func testMemoryTapIgnoredWhenNotRecalling() {
+        let gs = GameState()
+        gs.gameMode    = .memoryChallenge
+        gs.memoryPhase = .flashing  // not recalling yet
+        gs.correctNote = .E
+        let before = gs.totalCount
+        gs.submitMemoryTap(string: 0, fret: 0)  // E open — correct but wrong phase
+        XCTAssertEqual(gs.totalCount, before)
+    }
+
+    func testMemoryTapCorrectNoteAddsToFoundFrets() {
+        let gs = GameState()
+        gs.gameMode        = .memoryChallenge
+        gs.difficulty      = .beginner
+        gs.correctNote     = .E
+        gs.memoryPhase     = .recalling
+        gs.fretAnswerState = .idle
+        gs.submitMemoryTap(string: 0, fret: 0)  // E open
+        XCTAssertTrue(gs.foundFrets.contains(FretPosition(string: 0, fret: 0)))
+    }
+
+    func testMemoryTapWrongNoteSetsWrongState() {
+        let gs = GameState()
+        gs.gameMode        = .memoryChallenge
+        gs.difficulty      = .beginner
+        gs.correctNote     = .A
+        gs.memoryPhase     = .recalling
+        gs.fretAnswerState = .idle
+        gs.submitMemoryTap(string: 0, fret: 0)  // string 0 fret 0 = E, not A
+        XCTAssertEqual(gs.fretAnswerState, .wrong(string: 0, fret: 0))
+        XCTAssertEqual(gs.totalCount,   1)
+        XCTAssertEqual(gs.correctCount, 0)
+    }
+
+    func testMemoryTapOutsideDifficultyIgnored() {
+        let gs = GameState()
+        gs.gameMode        = .memoryChallenge
+        gs.difficulty      = .beginner  // maxFret = 5
+        gs.correctNote     = .E
+        gs.memoryPhase     = .recalling
+        gs.fretAnswerState = .idle
+        let before = gs.totalCount
+        // E on string 1 fret 7 is correct note but fret 7 > maxFret 5
+        gs.submitMemoryTap(string: 1, fret: 7)
+        XCTAssertEqual(gs.totalCount, before, "tap outside difficulty range must be ignored")
+        XCTAssertTrue(gs.foundFrets.isEmpty)
+    }
+
+    func testMemoryTapDuplicateIgnored() {
+        let gs = GameState()
+        gs.gameMode        = .memoryChallenge
+        gs.difficulty      = .beginner
+        gs.correctNote     = .E
+        gs.memoryPhase     = .recalling
+        gs.fretAnswerState = .idle
+        gs.foundFrets      = [FretPosition(string: 0, fret: 0)]
+        let before = gs.totalCount
+        gs.submitMemoryTap(string: 0, fret: 0)
+        XCTAssertEqual(gs.totalCount, before)
+    }
+
+    func testMemoryTapCompletesRoundWhenAllFound() {
+        let gs = GameState()
+        gs.gameMode        = .memoryChallenge
+        gs.difficulty      = .beginner
+        gs.correctNote     = .A
+        gs.memoryPhase     = .recalling
+        gs.fretAnswerState = .idle
+        gs.foundFrets      = []
+
+        let positions = Fretboard().allPositions(for: .A)
+            .filter { $0.fret <= Difficulty.beginner.maxFret }
+            .map    { FretPosition(string: $0.string, fret: $0.fret) }
+
+        for pos in positions {
+            gs.submitMemoryTap(string: pos.string, fret: pos.fret)
+        }
+
+        XCTAssertEqual(gs.correctCount, 1)
+        XCTAssertEqual(gs.memoryPhase,  .complete)
+    }
+
+    // MARK: flashDuration
+
+    func testFlashDurationByDifficulty() {
+        let gs = GameState()
+        gs.difficulty = .beginner
+        XCTAssertEqual(gs.flashDuration, 4.0)
+        gs.difficulty = .intermediate
+        XCTAssertEqual(gs.flashDuration, 2.5)
+        gs.difficulty = .advanced
+        XCTAssertEqual(gs.flashDuration, 1.5)
+    }
+
+    // MARK: Streak tracking
+
+    func testStreakIncrementsOnCorrectAnswer() {
+        let gs = GameState()
+        gs.gameMode = .nameTheNote
+        gs.submit(answer: gs.correctNote)
+        XCTAssertEqual(gs.currentStreak,        1)
+        XCTAssertEqual(gs.bestStreakThisSession, 1)
+    }
+
+    func testStreakResetsOnWrongAnswer() {
+        let gs = GameState()
+        gs.gameMode      = .nameTheNote
+        gs.currentStreak = 3
+        let wrong = Note.allCases.first { $0 != gs.correctNote }!
+        gs.submit(answer: wrong)
+        XCTAssertEqual(gs.currentStreak, 0)
+    }
+
+    func testBestStreakTrackedAcrossAnswers() {
+        let gs = GameState()
+        gs.gameMode             = .nameTheNote
+        gs.currentStreak        = 4
+        gs.bestStreakThisSession = 4
+        gs.submit(answer: gs.correctNote)
+        XCTAssertEqual(gs.bestStreakThisSession, 5)
+    }
+
+    func testSetDifficultyPreservesStreak() {
+        // setDifficulty only resets scores, not streak
+        let gs = GameState()
+        gs.currentStreak        = 5
+        gs.bestStreakThisSession = 5
+        gs.setDifficulty(.intermediate)
+        XCTAssertEqual(gs.currentStreak,        5)
+        XCTAssertEqual(gs.bestStreakThisSession, 5)
+        XCTAssertEqual(gs.correctCount, 0)
+        XCTAssertEqual(gs.totalCount,   0)
+    }
+}
+
+// MARK: - GuitarTuning Tests
+
+final class GuitarTuningTests: XCTestCase {
+
+    func testStandardTuningStrings() {
+        XCTAssertEqual(GuitarTuning.standard.strings, [.E, .A, .D, .G, .B, .E])
+    }
+
+    func testDropDLowStringIsD() {
+        XCTAssertEqual(GuitarTuning.dropD.strings[0], .D)
+        XCTAssertEqual(GuitarTuning.dropD.strings[1], .A)  // rest unchanged
+    }
+
+    func testOpenGStrings() {
+        XCTAssertEqual(GuitarTuning.openG.strings, [.D, .G, .D, .G, .B, .D])
+    }
+
+    func testHalfStepDownStrings() {
+        XCTAssertEqual(GuitarTuning.halfStepDown.strings, [.Ds, .Gs, .Cs, .Fs, .As, .Ds])
+    }
+
+    func testAllTuningsHaveSixStrings() {
+        for tuning in GuitarTuning.all {
+            XCTAssertEqual(tuning.stringCount, 6, "\(tuning.name) should have 6 strings")
+        }
+    }
+
+    func testAllContainsTenTunings() {
+        XCTAssertEqual(GuitarTuning.all.count, 10)
+    }
+
+    func testAllTuningsHaveUniqueIDs() {
+        let ids = GuitarTuning.all.map { $0.id }
+        XCTAssertEqual(ids.count, Set(ids).count, "All tuning IDs must be unique")
+    }
+
+    func testHalfStepDownUsesFlats() {
+        XCTAssertTrue(GuitarTuning.halfStepDown.useFlats)
+    }
+
+    func testStandardDoesNotUseFlats() {
+        XCTAssertFalse(GuitarTuning.standard.useFlats)
+    }
+
+    func testDropCStrings() {
+        XCTAssertEqual(GuitarTuning.dropC.strings, [.C, .G, .C, .F, .A, .D])
+    }
+}
