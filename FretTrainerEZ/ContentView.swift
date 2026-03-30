@@ -293,7 +293,7 @@ struct ContentView: View {
                 return nil
             }
             return { s, f in
-                if soundEnabled && fretboard.note(string: s, fret: f) == gameState.correctNote {
+                if soundEnabled && f <= gameState.difficulty.maxFret && fretboard.note(string: s, fret: f) == gameState.correctNote {
                     audioEngine.play(string: s, fret: f)
                 }
                 if gameState.gameMode == .memoryChallenge {
