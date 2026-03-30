@@ -226,7 +226,7 @@ final class GameState {
     // MARK: - Find The Fret
 
     func submitFret(string: Int, fret: Int) {
-        guard canAnswer else { return }
+        guard canAnswer, fret <= difficulty.maxFret else { return }
         let pos = FretPosition(string: string, fret: fret)
         guard !foundFrets.contains(pos), case .idle = fretAnswerState else { return }
 
@@ -269,7 +269,7 @@ final class GameState {
     // MARK: - Memory Challenge
 
     func submitMemoryTap(string: Int, fret: Int) {
-        guard memoryPhase == .recalling else { return }
+        guard memoryPhase == .recalling, fret <= difficulty.maxFret else { return }
         let pos = FretPosition(string: string, fret: fret)
         guard !foundFrets.contains(pos), case .idle = fretAnswerState else { return }
 
