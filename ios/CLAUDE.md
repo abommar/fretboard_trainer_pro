@@ -233,7 +233,13 @@ All views use the same dark theme colors:
 - No encryption ✓
 - App Store Connect validation errors resolved (icon sizes + CFBundleIconName) ✓
 
-## Roadmap / What's NOT Built Yet
+## Monorepo Structure
+This is a monorepo. The iOS app lives here in `ios/`. The Android app lives in `android/`.
+- Open iOS: `ios/FretTrainerEZ.xcodeproj` in Xcode
+- Open Android: `android/` folder in Android Studio (Gradle sync required on first open)
+- See `android/CLAUDE.md` for Android-specific context
+
+## Roadmap / What's NOT Built Yet (iOS)
 - Phase 5: Extended chord voicings (9th/11th/13th chord types in ChordLibrary)
 - Chord library has all 12 roots × 5 chord types + limited sus2/sus4
 - Tuner untested on simulator (no real mic) — test on device only

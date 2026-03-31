@@ -603,23 +603,65 @@ struct SongGeneratorView: View {
         .background(cardBg.opacity(0.35))
     }
 
+    private func chordTypeColor(for type: ChordType) -> Color {
+        switch type {
+        case .major:     return Color(red: 0.29, green: 0.56, blue: 0.89)  // steel blue
+        case .minor:     return Color(red: 0.66, green: 0.34, blue: 0.97)  // purple
+        case .dominant7: return Color(red: 0.95, green: 0.62, blue: 0.08)  // amber
+        case .major7:    return Color(red: 0.07, green: 0.73, blue: 0.52)  // teal
+        case .minor7:    return Color(red: 0.55, green: 0.37, blue: 0.97)  // violet
+        case .sus2:      return Color(red: 0.04, green: 0.72, blue: 0.85)  // cyan
+        case .sus4:      return Color(red: 0.09, green: 0.65, blue: 0.92)  // sky
+        }
+    }
+
     private func arrangedChip(preset: SongChordPreset, item: ArrangedChord) -> some View {
-        Button(action: { playChord(preset.voicing) }) {
-            HStack(spacing: 6) {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 9))
-                Text(preset.title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+        let typeColor = chordTypeColor(for: preset.voicing.type)
+        let rootText  = useFlats ? preset.voicing.root.flatName : preset.voicing.root.sharpName
+        let suffix    = preset.voicing.type.suffix
+
+        return Button(action: { playChord(preset.voicing) }) {
+            VStack(spacing: 0) {
+                // Thin color bar at top
+                typeColor
+                    .frame(height: 3)
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10))
+
+                HStack(alignment: .center, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(alignment: .firstTextBaseline, spacing: 2) {
+                            Text(rootText)
+                                .font(.system(size: 16, weight: .black, design: .rounded))
+                                .foregroundColor(.white)
+                            if !suffix.isEmpty {
+                                Text(suffix)
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .foregroundColor(typeColor)
+                                    .baselineOffset(1)
+                            }
+                        }
+                        Text(preset.voicing.type.rawValue)
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.45))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 9))
+                        .foregroundColor(typeColor.opacity(0.85))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(hex: "#2A2A6A"))
+                    .fill(LinearGradient(
+                        colors: [typeColor.opacity(0.22), typeColor.opacity(0.08)],
+                        startPoint: .top, endPoint: .bottom
+                    ))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke(accent.opacity(0.6), lineWidth: 1)
+                            .stroke(typeColor.opacity(0.4), lineWidth: 1)
                     )
             )
         }
@@ -633,23 +675,51 @@ struct SongGeneratorView: View {
     }
 
     private func paletteChip(preset: SongChordPreset) -> some View {
-        Text(preset.title)
-            .font(.system(size: 13, weight: .semibold, design: .rounded))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(cardBg)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.white.opacity(0.16), lineWidth: 1)
-                    )
-            )
-            .draggable("preset:\(preset.id)")
-            .onTapGesture {
-                arrangement.append(ArrangedChord(presetID: preset.id))
+        let typeColor = chordTypeColor(for: preset.voicing.type)
+        let rootText  = useFlats ? preset.voicing.root.flatName : preset.voicing.root.sharpName
+        let suffix    = preset.voicing.type.suffix
+
+        return VStack(spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(rootText)
+                    .font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                if !suffix.isEmpty {
+                    Text(suffix)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(typeColor)
+                        .baselineOffset(1)
+                }
             }
+            Text(preset.voicing.type.rawValue)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundColor(typeColor.opacity(0.85))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(LinearGradient(
+                    colors: [typeColor.opacity(0.18), typeColor.opacity(0.06)],
+                    startPoint: .top, endPoint: .bottom
+                ))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(typeColor.opacity(0.38), lineWidth: 1)
+                )
+                .overlay(alignment: .top) {
+                    typeColor.opacity(0.3)
+                        .frame(height: 1)
+                        .padding(.horizontal, 8)
+                        .padding(.top, 1)
+                }
+        )
+        .draggable("preset:\(preset.id)")
+        .onTapGesture {
+            arrangement.append(ArrangedChord(presetID: preset.id))
+        }
     }
 
     private func handleDrop(_ payloads: [String], targetIndex: Int) -> Bool {
