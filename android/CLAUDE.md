@@ -119,7 +119,6 @@ All screens use:
 - `WrongRed = #E74C3C`
 
 ## What's NOT Built Yet (Android)
-- Hamburger drawer menu
 - Circle of Fifths screen
 - Chord Charts + Chord Jam screen
 - Chromatic Tuner screen (needs RECORD_AUDIO runtime permission flow)
