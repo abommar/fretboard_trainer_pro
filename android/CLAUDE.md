@@ -111,6 +111,11 @@ android/
 - **FindItControls / MemoryControls**: 48sp bold note name centered in card, color-coded by answer state; Skip button pinned to `Alignment.CenterEnd`.
 - **Drawer insets**: `ModalDrawerSheet` is called with `windowInsets = WindowInsets(0)` in MainScreen so `AppDrawer`'s own `statusBarsPadding()` is the sole insets handler. Without this, status-bar insets are applied twice (once by ModalDrawerSheet, once by AppDrawer), eating ~48dp of drawer height in landscape and hiding bottom menu items.
 - **Tuner auto-start**: `isListening` initializes to `hasPermission` so the tuner starts recording immediately when the screen opens (no manual "Start Tuning" tap needed if permission was already granted). The permission-result callback also sets `isListening = true` on grant.
+- **Tuner AudioSource**: tries `VOICE_RECOGNITION` first (disables Android AGC/noise suppression that filters guitar frequencies), falls back to `MIC`. Uses `firstNotNullOfOrNull` over a list of sources.
+- **Tuner signal level bar**: live INPUT LEVEL bar (RMS/4000 normalised, 0–1) shown when listening — green when signal present, red when clipping. Confirms whether mic is receiving audio independently of pitch detection.
+- **Tuner error state**: `audioError` flag — if both AudioRecord sources fail to init or `startRecording()` throws, `isListening` resets to false and button shows "Mic Error – Retry".
+- **Tuner attribution tag**: `<attribution android:tag="TunerMic">` declared in manifest (required by Android 12+ AppOps for RECORD_AUDIO; absence causes AppOps errors and can interfere with permission checks).
+- **Android emulator mic**: ARM64 Android emulator on Apple Silicon does NOT forward host Mac microphone — AudioRecord initialises and reads correctly but all buffers are silence (RMS ~3). Tuner must be tested on a physical Android device.
 
 ## SharedPreferences Keys
 **`fret_trainer` (GameState — game data):**
