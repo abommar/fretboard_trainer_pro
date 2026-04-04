@@ -93,9 +93,9 @@ private fun noteFrequency(midiNote: Int): Double = 440.0 * Math.pow(2.0, (midiNo
 private fun detectPitch(buffer: ShortArray, sampleRate: Int): Double? {
     val n = buffer.size
 
-    // RMS silence gate — 80 is permissive enough for a guitar mic'd at arm's length
+    // RMS silence gate — 30 to avoid pure noise detections; level bar in UI shows live RMS
     val rms = sqrt(buffer.sumOf { it.toDouble() * it }.toFloat() / n)
-    if (rms < 80f) return null
+    if (rms < 30f) return null
 
     // Apply Hann window to reduce spectral leakage
     val windowed = FloatArray(n) { i ->
@@ -193,6 +193,7 @@ fun ChromaticTunerScreen(
     var detectedMidi      by remember { mutableStateOf<Int?>(null) }
     var detectedNoteName  by remember { mutableStateOf<String?>(null) }  // no-octave name for string matching
     var centsDeviation    by remember { mutableFloatStateOf(0f) }
+    var signalLevel       by remember { mutableFloatStateOf(0f) }  // 0-1, live RMS for level bar
     var isListening       by remember { mutableStateOf(hasPermission) }
     var audioError        by remember { mutableStateOf(false) }
     var selectedTuning    by remember { mutableStateOf(GuitarTuning.standard) }
@@ -213,25 +214,30 @@ fun ChromaticTunerScreen(
             detectedMidi     = null
             detectedNoteName = null
             centsDeviation   = 0f
+            signalLevel      = 0f
             return@LaunchedEffect
         }
 
-        audioError = false
+        audioError   = false
+        signalLevel  = 0f
 
         withContext(Dispatchers.IO) {
             val minBuf  = AudioRecord.getMinBufferSize(
                 SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
             )
-            val bufSize  = maxOf(if (minBuf > 0) minBuf else 0, BUFFER_SAMPLES * 2)
-            val recorder = try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                    SAMPLE_RATE,
-                    AudioFormat.CHANNEL_IN_MONO,
-                    AudioFormat.ENCODING_PCM_16BIT,
-                    bufSize,
-                ).takeIf { it.state == AudioRecord.STATE_INITIALIZED }
-            } catch (_: Exception) { null }
+            val bufSize = maxOf(if (minBuf > 0) minBuf else 0, BUFFER_SAMPLES * 2)
+
+            // Try VOICE_RECOGNITION first (disables AGC/noise-suppression); fall back to MIC
+            val recorder = listOf(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                MediaRecorder.AudioSource.MIC,
+            ).firstNotNullOfOrNull { src ->
+                try {
+                    AudioRecord(src, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT, bufSize)
+                        .takeIf { it.state == AudioRecord.STATE_INITIALIZED }
+                } catch (_: Exception) { null }
+            }
 
             if (recorder == null) {
                 withContext(Dispatchers.Main) { audioError = true; isListening = false }
@@ -257,6 +263,12 @@ fun ChromaticTunerScreen(
                 while (isActive) {
                     val read = recorder.read(buf, 0, buf.size)
                     if (read <= 0) continue
+
+                    // Always compute RMS for the level bar — gate pitch detection at a low threshold
+                    val sumSq = buf.sumOf { it.toDouble() * it }
+                    val rms   = sqrt(sumSq.toFloat() / buf.size)
+                    val level = (rms / 4000f).coerceIn(0f, 1f)  // normalise; 4000 = good loud signal
+                    withContext(Dispatchers.Main) { signalLevel = level }
 
                     val freq  = detectPitch(buf, SAMPLE_RATE)
                     val nowMs = System.currentTimeMillis()
@@ -297,9 +309,8 @@ fun ChromaticTunerScreen(
                                 detectedMidi     = null
                                 detectedNoteName = null
                                 centsDeviation   = 0f
-                                smoothedCents    = 0f
                             }
-                            smoothedCents    = 0f
+                            smoothedCents = 0f
                         }
                         confirmationNote  = null
                         confirmationCount = 0
@@ -308,6 +319,7 @@ fun ChromaticTunerScreen(
             } finally {
                 recorder.stop()
                 recorder.release()
+                withContext(Dispatchers.Main) { signalLevel = 0f }
             }
         }
     }
@@ -396,6 +408,15 @@ fun ChromaticTunerScreen(
                                 .padding(horizontal = 24.dp),
                         )
                         Spacer(Modifier.height(8.dp))
+                        if (isListening && !audioError) {
+                            SignalLevelBar(
+                                level    = signalLevel,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                        }
                         if (midi != null) {
                             val label = when {
                                 abs(centsDeviation) < 3f  -> "In Tune"
@@ -506,7 +527,20 @@ fun ChromaticTunerScreen(
                     )
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(24.dp))
+
+                // Signal level bar — visible when listening; moves if mic is receiving audio
+                if (isListening && !audioError) {
+                    SignalLevelBar(
+                        level    = signalLevel,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 48.dp),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                } else {
+                    Spacer(Modifier.height(32.dp))
+                }
 
                 // Start/Stop button
                 Button(
@@ -815,5 +849,46 @@ private fun TunerTopBar(onBack: () -> Unit) {
             fontWeight = FontWeight.Bold,
             modifier   = Modifier.align(Alignment.Center),
         )
+    }
+}
+
+// ── Signal level bar ──────────────────────────────────────────────────────────
+
+/**
+ * Horizontal bar showing live microphone input level.
+ * Moves any time the AudioRecord loop is receiving data — if this bar never moves
+ * when playing guitar, audio capture itself is broken (permission / hardware issue).
+ */
+@Composable
+private fun SignalLevelBar(level: Float, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text          = "INPUT LEVEL",
+            color         = TextMuted,
+            fontSize      = 8.sp,
+            fontWeight    = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            modifier      = Modifier.padding(bottom = 3.dp),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(3.dp)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(level.coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(
+                        color = when {
+                            level > 0.85f -> AccentRed
+                            level > 0.4f  -> CorrectGreen
+                            else          -> CorrectGreen.copy(alpha = 0.6f)
+                        },
+                        shape = RoundedCornerShape(3.dp),
+                    ),
+            )
+        }
     }
 }
