@@ -93,9 +93,9 @@ private fun noteFrequency(midiNote: Int): Double = 440.0 * Math.pow(2.0, (midiNo
 private fun detectPitch(buffer: ShortArray, sampleRate: Int): Double? {
     val n = buffer.size
 
-    // RMS silence gate
+    // RMS silence gate — 80 is permissive enough for a guitar mic'd at arm's length
     val rms = sqrt(buffer.sumOf { it.toDouble() * it }.toFloat() / n)
-    if (rms < 200f) return null
+    if (rms < 80f) return null
 
     // Apply Hann window to reduce spectral leakage
     val windowed = FloatArray(n) { i ->
@@ -194,6 +194,7 @@ fun ChromaticTunerScreen(
     var detectedNoteName  by remember { mutableStateOf<String?>(null) }  // no-octave name for string matching
     var centsDeviation    by remember { mutableFloatStateOf(0f) }
     var isListening       by remember { mutableStateOf(hasPermission) }
+    var audioError        by remember { mutableStateOf(false) }
     var selectedTuning    by remember { mutableStateOf(GuitarTuning.standard) }
 
     val permLauncher = rememberLauncherForActivityResult(
@@ -215,6 +216,8 @@ fun ChromaticTunerScreen(
             return@LaunchedEffect
         }
 
+        audioError = false
+
         withContext(Dispatchers.IO) {
             val minBuf  = AudioRecord.getMinBufferSize(
                 SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
@@ -222,7 +225,7 @@ fun ChromaticTunerScreen(
             val bufSize  = maxOf(if (minBuf > 0) minBuf else 0, BUFFER_SAMPLES * 2)
             val recorder = try {
                 AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
+                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
                     SAMPLE_RATE,
                     AudioFormat.CHANNEL_IN_MONO,
                     AudioFormat.ENCODING_PCM_16BIT,
@@ -230,12 +233,16 @@ fun ChromaticTunerScreen(
                 ).takeIf { it.state == AudioRecord.STATE_INITIALIZED }
             } catch (_: Exception) { null }
 
-            if (recorder == null) return@withContext
+            if (recorder == null) {
+                withContext(Dispatchers.Main) { audioError = true; isListening = false }
+                return@withContext
+            }
 
             try {
                 recorder.startRecording()
             } catch (_: Exception) {
                 recorder.release()
+                withContext(Dispatchers.Main) { audioError = true; isListening = false }
                 return@withContext
             }
 
@@ -273,7 +280,7 @@ fun ChromaticTunerScreen(
                         val newName  = rawNoteName
                         val newCents = smoothedCents
 
-                        if (confirmationCount >= 3) {
+                        if (confirmationCount >= 2) {
                             withContext(Dispatchers.Main) {
                                 detectedFreq     = newFreq
                                 detectedMidi     = newMidi
@@ -423,15 +430,15 @@ fun ChromaticTunerScreen(
                     ) {
                         Spacer(Modifier.height(16.dp))
                         Button(
-                            onClick = { isListening = !isListening },
+                            onClick = { audioError = false; isListening = !isListening },
                             colors  = ButtonDefaults.buttonColors(
-                                containerColor = if (isListening) Color(0xFF333355) else AccentRed,
+                                containerColor = if (audioError) Color(0xFF8B0000) else if (isListening) Color(0xFF333355) else AccentRed,
                             ),
                             shape    = RoundedCornerShape(12.dp),
                             modifier = Modifier.width(160.dp).height(44.dp),
                         ) {
                             Text(
-                                text       = if (isListening) "Stop" else "Start Tuning",
+                                text       = if (audioError) "Mic Error – Retry" else if (isListening) "Stop" else "Start Tuning",
                                 color      = TextPrimary,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -503,15 +510,15 @@ fun ChromaticTunerScreen(
 
                 // Start/Stop button
                 Button(
-                    onClick = { isListening = !isListening },
+                    onClick = { audioError = false; isListening = !isListening },
                     colors  = ButtonDefaults.buttonColors(
-                        containerColor = if (isListening) Color(0xFF333355) else AccentRed,
+                        containerColor = if (audioError) Color(0xFF8B0000) else if (isListening) Color(0xFF333355) else AccentRed,
                     ),
                     shape    = RoundedCornerShape(12.dp),
                     modifier = Modifier.width(160.dp).height(48.dp),
                 ) {
                     Text(
-                        text       = if (isListening) "Stop" else "Start Tuning",
+                        text       = if (audioError) "Mic Error – Retry" else if (isListening) "Stop" else "Start Tuning",
                         color      = TextPrimary,
                         fontWeight = FontWeight.Bold,
                     )
