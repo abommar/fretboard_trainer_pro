@@ -36,10 +36,19 @@ android/
 └── app/
     ├── build.gradle.kts           # compileSdk=35, minSdk=26, Compose BOM
     ├── src/main/
-    │   ├── AndroidManifest.xml    # RECORD_AUDIO permission, fullSensor orientation
-    │   ├── res/values/
-    │   │   ├── strings.xml        # app_name = "FretTrainer EZ"
-    │   │   └── themes.xml
+    │   ├── AndroidManifest.xml    # RECORD_AUDIO permission, fullSensor orientation, icon attrs
+    │   ├── res/
+    │   │   ├── values/
+    │   │   │   ├── strings.xml               # app_name = "FretTrainer EZ"
+    │   │   │   ├── themes.xml
+    │   │   │   └── ic_launcher_background.xml # #1A1A2E
+    │   │   ├── mipmap-anydpi-v26/
+    │   │   │   ├── ic_launcher.xml            # adaptive icon: bg color + fg PNG
+    │   │   │   └── ic_launcher_round.xml
+    │   │   └── mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/
+    │   │       ├── ic_launcher.png            # 48/72/96/144/192px — from iOS AppIcon-1024
+    │   │       ├── ic_launcher_round.png
+    │   │       └── ic_launcher_fg.png         # fretboard crop (foreground layer)
     │   └── kotlin/.../frettrainerez/
     │       ├── MainActivity.kt    # Entry point; wires GameState VM + NoteAudioEngine + prefs
     │       ├── models/
@@ -54,7 +63,8 @@ android/
     │       │   └── FretboardStyle.kt  # 5 wood themes with Compose Color values
     │       ├── game/
     │       │   └── GameState.kt   # AndroidViewModel; all game modes, difficulty, scoring, streaks,
-    │       │                      #   timed mode (coroutine countdown), Memory Challenge flash timer
+    │       │                      #   timed mode (coroutine countdown), Memory Challenge flash timer,
+    │       │                      #   bestScoreFor(duration) per mode+duration
     │       ├── audio/
     │       │   └── NoteAudioEngine.kt  # Karplus-Strong via AudioTrack MODE_STATIC, coroutine playback
     │       └── ui/
@@ -62,12 +72,27 @@ android/
     │           │   ├── Color.kt   # BgColor, CardBg, AccentRed, AccentGold, CorrectGreen, WrongRed
     │           │   └── Theme.kt   # FretTrainerTheme (Material3 dark)
     │           ├── components/
-    │           │   ├── FretboardView.kt     # Canvas fretboard, horizontal scroll, tap detection,
-    │           │   │                        #   flash/found/wrong dot overlays
+    │           │   ├── FretboardView.kt     # Canvas fretboard (22 frets), horizontal scroll,
+    │           │   │                        #   tap detection, flash/found/wrong overlays,
+    │           │   │                        #   study mode note-label pills (hue-colored),
+    │           │   │                        #   gold wire at difficulty maxFret boundary
     │           │   └── NoteAnswerButtons.kt # 4-column LazyVerticalGrid of 12 note buttons
     │           └── screens/
-    │               └── MainScreen.kt  # Portrait layout: TopBar, ModeSelector, ScoreRow,
-    │                                  #   FretboardView, PromptText, game controls, DifficultySelector
+    │               ├── MainScreen.kt        # Vertically scrollable layout: TopBar (Study toggle),
+    │               │                        #   ModeSelector, PracticeTimedToggle, ScoreRow /
+    │               │                        #   TimerActiveRow, FretboardView, PromptText,
+    │               │                        #   game controls (NoteAnswerButtons / FindItControls /
+    │               │                        #   MemoryControls / StudyFilterButtons),
+    │               │                        #   DifficultySelector / TimedSetupUI,
+    │               │                        #   TimedResultOverlay (fullscreen)
+    │               ├── ChordChartsScreen.kt # Root picker + voicing list + fretboard diagram +
+    │               │                        #   theory panel (chord tones + intervals); scrollable
+    │               ├── ChordJamScreen.kt    # 20-chord palette + progression builder (4-col grid);
+    │               │                        #   tap to add + strum, × to remove
+    │               ├── CircleOfFifthsScreen.kt # Interactive circle canvas + KeyDetailCard
+    │               │                            #   (diatonic chord pills + common progressions)
+    │               └── ChromaticTunerScreen.kt  # ACF pitch detection, cents meter, open-string
+    │                                             #   reference row, tuning preset selector
 ```
 
 ## Key Design Decisions
@@ -79,6 +104,13 @@ android/
 - **Audio**: `AudioTrack.MODE_STATIC` pre-renders all 1.5s of samples before play, matching iOS AVAudioPCMBuffer approach. Released after playback via coroutine delay.
 - **No haptics**: Android vibration API differs enough from iOS CoreHaptics that it's deferred to Phase 2
 - **questionIndex: Int** (not UUID) — incremented each `nextQuestion()`, drives `LaunchedEffect` in MainScreen for sound trigger
+- **Scrollable main layout**: MainScreen Column uses `verticalScroll(rememberScrollState())` + `fillMaxWidth()` (not `fillMaxSize`) so all controls are reachable in landscape. No `Spacer(weight(1f))` — use fixed-height spacers only.
+- **Study state survives rotation**: `isStudyMode` and `studyFilterNote` use `rememberSaveable` (enums are java.io.Serializable → Bundle-safe).
+- **Gold fret wire**: `FretboardView` draws a single gold wire exactly at `maxFret` when `maxFret < FRET_COUNT` — one boundary per difficulty, no wire in Advanced mode.
+- **Note label pills**: hue-colored pills drawn via `canvas.nativeCanvas.drawRoundRect`; `Color.hsv(note.ordinal/12f*360f, 0.7f, 0.9f)`. Non-matching notes dim to 15% opacity when a study filter is active.
+- **FindItControls / MemoryControls**: 48sp bold note name centered in card, color-coded by answer state; Skip button pinned to `Alignment.CenterEnd`.
+- **Drawer insets**: `ModalDrawerSheet` is called with `windowInsets = WindowInsets(0)` in MainScreen so `AppDrawer`'s own `statusBarsPadding()` is the sole insets handler. Without this, status-bar insets are applied twice (once by ModalDrawerSheet, once by AppDrawer), eating ~48dp of drawer height in landscape and hiding bottom menu items.
+- **Tuner auto-start**: `isListening` initializes to `hasPermission` so the tuner starts recording immediately when the screen opens (no manual "Start Tuning" tap needed if permission was already granted). The permission-result callback also sets `isListening = true` on grant.
 
 ## SharedPreferences Keys
 **`fret_trainer` (GameState — game data):**
@@ -88,6 +120,7 @@ android/
 **`fret_trainer_ui` (MainActivity — UI prefs):**
 - `soundEnabled` — Boolean, default false
 - `useFlats` — Boolean, default false
+- `hapticsEnabled` — Boolean, default false
 - `fretboardStyle` — String (FretboardStyle.name), default "ROSEWOOD"
 
 ## Game Modes
@@ -118,14 +151,22 @@ All screens use:
 - `CorrectGreen = #2ECC71`
 - `WrongRed = #E74C3C`
 
+## What's Built (Android) — as of 2026-04-04
+- All 3 game modes: Name It, Find It, Memory Challenge
+- Study Mode (Name It + Find It; hidden in Memory)
+- Timed Mode (duration picker, countdown, results overlay, best-score persistence)
+- Difficulty selector (Beginner/Intermediate/Advanced)
+- Circle of Fifths screen with interactive circle + KeyDetailCard (diatonic chords + progressions)
+- Chord Charts screen (root picker, voicing list, diagram, chord tones + intervals panel)
+- Chord Jam screen (20-chord palette, 4-col progression grid, tap-to-add, tap-to-play, × remove)
+- Chromatic Tuner screen (ACF pitch detection, cents EMA smoothing, open-string reference, tuning selector; auto-starts on open if permission granted)
+- Scale Explorer screen (ScalesScreen.kt — root picker, 10 scale types, fretboard overlay, note-pill row)
+- Fretboard Style picker screen (FretboardStyleScreen.kt — Canvas wood-theme previews, 5 themes, persisted)
+- Settings screen (SettingsScreen.kt — sound, haptics, flats toggles; all wired to SharedPreferences in MainActivity)
+- App icon (adaptive icon from iOS AppIcon-1024.png, navy background, fretboard foreground)
+- Landscape-safe scrollable layout
+- Drawer landscape scroll fix (ModalDrawerSheet windowInsets=0 prevents double status-bar padding)
+
 ## What's NOT Built Yet (Android)
-- Circle of Fifths screen
-- Chord Charts + Chord Jam screen
-- Chromatic Tuner screen (needs RECORD_AUDIO runtime permission flow)
-- Scale Explorer screen
-- Fretboard Style picker screen
-- Settings screen (sound/flats toggles are currently hardcoded in MainActivity)
-- Timed mode UI (GameState supports it fully — UI not wired yet)
-- Haptics
-- App icon / splash screen
+- Haptics (hapticsEnabled pref exists and is toggled in Settings, but no vibration implementation)
 - Google Play distribution setup

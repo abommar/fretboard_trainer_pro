@@ -3,6 +3,8 @@ package com.dontfretaboutitai.frettrainerez.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +24,7 @@ import androidx.compose.material.icons.filled.Piano
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.RadioButtonChecked
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -84,19 +86,24 @@ fun AppDrawer(
             }
         }
 
-        Divider(color = Color.White.copy(alpha = 0.08f))
-        Spacer(Modifier.height(8.dp))
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 
-        // Menu items
-        AppScreen.entries.forEach { screen ->
-            DrawerItem(
-                screen    = screen,
-                onClick   = { onNavigate(screen) }
-            )
+        // Menu items — scrollable so all items are reachable in landscape
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 8.dp),
+        ) {
+            AppScreen.entries.forEach { screen ->
+                DrawerItem(
+                    screen  = screen,
+                    onClick = { onNavigate(screen) }
+                )
+            }
         }
 
-        Spacer(Modifier.weight(1f))
-        Divider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 
         // Footer
         Text(

@@ -35,13 +35,16 @@ fun NoteAnswerButtons(
     answerState: AnswerState,
     correctNote: Note,
     useFlats: Boolean = false,
+    columns: Int = 4,
+    buttonHeight: androidx.compose.ui.unit.Dp = 38.dp,
+    containerHeight: androidx.compose.ui.unit.Dp = 130.dp,
     onAnswer: (Note) -> Unit,
 ) {
     LazyVerticalGrid(
-        columns               = GridCells.Fixed(4),
+        columns               = GridCells.Fixed(columns),
         modifier              = Modifier
             .fillMaxWidth()
-            .height(130.dp)
+            .height(containerHeight)
             .padding(horizontal = 12.dp),
         contentPadding        = PaddingValues(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -72,7 +75,7 @@ fun NoteAnswerButtons(
 
             Button(
                 onClick  = { if (answerState == AnswerState.Idle) onAnswer(note) },
-                modifier = Modifier.height(38.dp),
+                modifier = Modifier.height(buttonHeight),
                 colors   = ButtonDefaults.buttonColors(
                     containerColor         = finalBg,
                     disabledContainerColor = finalBg.copy(alpha = 0.5f),

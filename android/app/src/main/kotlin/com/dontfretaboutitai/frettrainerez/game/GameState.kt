@@ -111,6 +111,9 @@ class GameState(application: Application) : AndroidViewModel(application) {
     val bestTimedScore: Int get() = prefs.getInt(timedScoreKey, 0)
     private val timedScoreKey: String get() = "best_${gameMode.name}_$timerDuration"
 
+    /** Returns the best timed score for the given duration in the current game mode. */
+    fun bestScoreFor(duration: Int): Int = prefs.getInt("best_${gameMode.name}_$duration", 0)
+
     private var countdownJob:   Job? = null
     private var memoryFlashJob: Job? = null
 
