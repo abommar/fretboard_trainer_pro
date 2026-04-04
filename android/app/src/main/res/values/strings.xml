@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">FretTrainer EZ</string>
+    <string name="attribution_tuner_mic">Chromatic Tuner</string>
 </resources>
