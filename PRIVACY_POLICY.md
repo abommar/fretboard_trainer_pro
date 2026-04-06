@@ -1,23 +1,23 @@
-# Privacy Policy — FretTrainer EZ
+# Privacy Policy — FretTrainerEZ
 
 **Effective Date:** April 5, 2026
 **Developer:** Don't Fret About It AI
-**App Name:** FretTrainer EZ
-**Contact:** abommar@gmail.com
+**App Name:** FretTrainerEZ
+**Contact:** dontfretaboutitai@gmail.com
 
 ---
 
 ## Overview
 
-FretTrainer EZ is a guitar fretboard training app. We are committed to protecting your privacy. This policy explains what information the app accesses, how it is used, and your rights.
+FretTrainerEZ is a guitar fretboard training app. We are committed to protecting your privacy. This policy explains what information the app accesses, how it is used, and your rights.
 
-**Short version:** FretTrainer EZ does not collect, store, transmit, or share any personal data. Everything stays on your device.
+**Short version:** FretTrainerEZ does not collect, store, transmit, or share any personal data. Everything stays on your device.
 
 ---
 
 ## 1. Information We Do Not Collect
 
-FretTrainer EZ does **not** collect, transmit, or share:
+FretTrainerEZ does **not** collect, transmit, or share:
 
 - Your name, email address, or any identifying information
 - Location data
@@ -32,7 +32,7 @@ The app has **no internet connection** — it makes zero network requests. There
 
 ## 2. Microphone Access
 
-FretTrainer EZ requests access to your device's microphone solely to power the **Chromatic Tuner** feature.
+FretTrainerEZ requests access to your device's microphone solely to power the **Chromatic Tuner** feature.
 
 - The microphone is used in real time to detect the pitch of your guitar strings.
 - **No audio is ever recorded, stored, or transmitted.** Audio signals are processed entirely in memory and discarded immediately after pitch analysis.
@@ -41,11 +41,11 @@ FretTrainer EZ requests access to your device's microphone solely to power the *
 
 ### iOS
 Microphone permission is requested the first time you open the Chromatic Tuner. You can manage this at any time under:
-**Settings → Privacy & Security → Microphone → FretTrainer EZ**
+**Settings → Privacy & Security → Microphone → FretTrainerEZ**
 
 ### Android
 Microphone permission (`RECORD_AUDIO`) is requested at runtime the first time you open the Chromatic Tuner. You can revoke it at any time under:
-**Settings → Apps → FretTrainer EZ → Permissions → Microphone**
+**Settings → Apps → FretTrainerEZ → Permissions → Microphone**
 
 ---
 
@@ -68,7 +68,7 @@ This data never leaves your device. It is not backed up to any cloud service con
 
 ## 4. Third-Party Services
 
-FretTrainer EZ uses **no third-party SDKs, libraries, or services** of any kind. There are no:
+FretTrainerEZ uses **no third-party SDKs, libraries, or services** of any kind. There are no:
 
 - Analytics providers (e.g., Firebase, Mixpanel, Amplitude)
 - Advertising networks
@@ -82,13 +82,13 @@ The app is built entirely on platform-native APIs (Apple frameworks on iOS; Andr
 
 ## 5. Children's Privacy
 
-FretTrainer EZ does not collect any personal data from any users, including children under 13 (COPPA) or under 16 (GDPR). The app is safe for use by all ages.
+FretTrainerEZ does not collect any personal data from any users, including children under 13 (COPPA) or under 16 (GDPR). The app is safe for use by all ages.
 
 ---
 
 ## 6. Data Security
 
-Because FretTrainer EZ collects no personal data and makes no network connections, there is no personal data to secure or that could be breached. All preferences stored locally are protected by your device's standard security mechanisms (iOS Keychain protections, Android sandboxing).
+Because FretTrainerEZ collects no personal data and makes no network connections, there is no personal data to secure or that could be breached. All preferences stored locally are protected by your device's standard security mechanisms (iOS Keychain protections, Android sandboxing).
 
 ---
 
@@ -96,7 +96,7 @@ Because FretTrainer EZ collects no personal data and makes no network connection
 
 Since we collect no personal data, there is nothing to access, correct, export, or delete on our end. To remove all locally stored preferences, simply uninstall the app from your device.
 
-If you have questions about this policy, contact us at **abommar@gmail.com**.
+If you have questions about this policy, contact us at **dontfretaboutitai@gmail.com**.
 
 ---
 
@@ -109,8 +109,8 @@ If we update this privacy policy, we will post the revised version here with an 
 ## 9. Contact
 
 Don't Fret About It AI
-Email: abommar@gmail.com
+Email: dontfretaboutitai@gmail.com
 
 ---
 
-*This privacy policy applies to FretTrainer EZ on iOS (App Store) and Android (Google Play).*
+*This privacy policy applies to FretTrainerEZ on iOS (App Store) and Android (Google Play).*
